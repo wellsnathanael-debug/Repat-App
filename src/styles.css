@@ -1,0 +1,388 @@
+:root {
+  --brand: #0f4c81;
+  --brand-dark: #0b3a63;
+  --brand-light: #e8eef5;
+  --bg: #f4f6f9;
+  --card: #ffffff;
+  --text: #1a2433;
+  --muted: #5b6878;
+  --border: #cdd6e0;
+  --danger: #b3261e;
+  --radius: 10px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+}
+
+.screen {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 16px 16px 64px;
+}
+
+.loading {
+  padding: 48px;
+  text-align: center;
+  color: var(--muted);
+}
+
+/* Header */
+.app-header {
+  padding: 8px 0 16px;
+}
+
+.app-header h1 {
+  margin: 0;
+  font-size: 22px;
+  color: var(--brand);
+}
+
+.subtitle {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.main-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.header-actions {
+  display: flex;
+  gap: 8px;
+}
+
+/* Patient banner (auto-populated details) */
+.patient-banner {
+  background: var(--brand);
+  color: #fff;
+  border-radius: var(--radius);
+  padding: 12px 16px;
+  margin-bottom: 16px;
+}
+
+.patient-banner-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 8px 16px;
+}
+
+.pb-label {
+  display: block;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  opacity: 0.75;
+}
+
+.pb-value {
+  display: block;
+  font-size: 15px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+/* Tabs */
+.tab-bar {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+  margin-bottom: 16px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.tab {
+  flex-shrink: 0;
+  padding: 12px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius) var(--radius) 0 0;
+  background: var(--card);
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.tab.active {
+  background: var(--brand);
+  border-color: var(--brand);
+  color: #fff;
+}
+
+/* Sections */
+.form-section {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.section-title {
+  margin: 0 0 10px;
+  font-size: 17px;
+  color: var(--brand);
+}
+
+.section-title-major {
+  margin: 0 0 10px;
+  font-size: 21px;
+  color: var(--brand-dark);
+}
+
+.form-section.major {
+  border-color: var(--brand);
+  background: var(--brand-light);
+}
+
+/* Fields */
+.field {
+  margin-bottom: 14px;
+}
+
+.field:last-child {
+  margin-bottom: 0;
+}
+
+.field-label {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.field-label-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.field-textarea,
+.field-input {
+  width: 100%;
+  padding: 12px;
+  font-size: 16px; /* prevents iOS zoom on focus */
+  font-family: inherit;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--text);
+  resize: vertical;
+}
+
+.field-textarea:focus,
+.field-input:focus {
+  outline: 2px solid var(--brand);
+  outline-offset: -1px;
+}
+
+.field-textarea:disabled,
+.field-input:disabled {
+  background: #eef1f5;
+  color: var(--muted);
+}
+
+.field-hint {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 4px;
+}
+
+.field-note {
+  font-size: 14px;
+  font-style: italic;
+  color: var(--muted);
+  background: var(--brand-light);
+  border-left: 3px solid var(--brand);
+  padding: 8px 12px;
+  border-radius: 0 8px 8px 0;
+  margin: 0 0 14px;
+}
+
+/* N/A toggle */
+.na-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--muted);
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+  margin-bottom: 6px;
+}
+
+.na-toggle input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--brand);
+  margin: 0;
+}
+
+.na-toggle.checked {
+  background: var(--brand-light);
+  border-color: var(--brand);
+  color: var(--brand);
+}
+
+.section-na {
+  margin-bottom: 10px;
+}
+
+/* Yes/No/NA */
+.choice-group {
+  display: flex;
+  gap: 8px;
+}
+
+.choice-btn {
+  min-width: 72px;
+  padding: 12px 18px;
+  font-size: 15px;
+  font-weight: 600;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.choice-btn.selected {
+  background: var(--brand);
+  border-color: var(--brand);
+  color: #fff;
+}
+
+.choice-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* Buttons */
+.btn {
+  padding: 12px 20px;
+  font-size: 15px;
+  font-weight: 600;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  cursor: pointer;
+}
+
+.btn-primary {
+  background: var(--brand);
+  color: #fff;
+}
+
+.btn-primary:active {
+  background: var(--brand-dark);
+}
+
+.btn-secondary {
+  background: #fff;
+  color: var(--brand);
+  border-color: var(--border);
+}
+
+.btn-danger {
+  background: var(--danger);
+  color: #fff;
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+/* Setup / lock */
+.setup-form,
+.lock-form {
+  max-width: 520px;
+}
+
+.lock-form {
+  margin-top: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.pin-input {
+  max-width: 200px;
+  letter-spacing: 0.3em;
+  font-size: 22px;
+  text-align: center;
+}
+
+.error {
+  color: var(--danger);
+  font-weight: 600;
+  font-size: 14px;
+}
+
+/* Export */
+.export-message {
+  margin-top: 10px;
+  font-weight: 600;
+  color: var(--brand);
+}
+
+.danger-zone {
+  border-color: var(--danger);
+}
+
+.confirm-clear {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.placeholder-panel {
+  background: var(--card);
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+  padding: 40px;
+  text-align: center;
+  color: var(--muted);
+}
+
+@media (max-width: 600px) {
+  .screen {
+    padding: 12px 10px 48px;
+  }
+
+  .app-header h1 {
+    font-size: 18px;
+  }
+
+  .patient-banner-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
