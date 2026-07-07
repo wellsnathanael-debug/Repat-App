@@ -16,10 +16,12 @@ const browser = await chromium.launch({
 const context = await browser.newContext({ viewport: { width: 1024, height: 1366 } }); // iPad-ish
 const page = await context.newPage();
 
-// --- 1. Setup screen ---
+// --- 1. Start screen → setup ---
 await page.goto('http://localhost:4173/Repat-App/');
+await page.waitForSelector('text=No case is currently on this device');
+check('Start screen shown on first launch', true);
+await page.click('.start-option:has-text("Set up a new case")');
 await page.waitForSelector('text=New case setup');
-check('Setup screen shown on first launch', true);
 
 await page.fill('#patientName', 'Jane Elizabeth Doe');
 await page.fill('#dob', '1958-03-14');
@@ -30,7 +32,7 @@ await page.fill('#escortName', 'Nathanael Wells RN');
 await page.fill('#pin', '4821');
 await page.fill('#pinConfirm', '4821');
 await page.screenshot({ path: `${SHOT}/1-setup.png`, fullPage: true });
-await page.click('button:has-text("Create case")');
+await page.click('button:has-text("Save case on this device")');
 
 // --- 2. Main screen after setup (auto-unlocked) ---
 await page.waitForSelector('.patient-banner');
@@ -115,9 +117,9 @@ check('PDF exported', true, download.suggestedFilename());
 // --- 11. Clear case wipes device ---
 await page.click('button:has-text("Clear case…")');
 await page.click('button:has-text("Yes, delete everything")');
-await page.waitForSelector('text=New case setup');
+await page.waitForSelector('text=No case is currently on this device');
 await page.reload();
-await page.waitForSelector('text=New case setup');
+await page.waitForSelector('text=No case is currently on this device');
 check('Clear case wipes data; app ready for next case', true);
 
 // --- 12. Offline: service worker serves the app with network cut ---
@@ -128,9 +130,59 @@ const swReady = await page.evaluate(async () => {
 check('Service worker active', swReady);
 await context.setOffline(true);
 await page.reload();
-await page.waitForSelector('text=New case setup', { timeout: 15000 });
+await page.waitForSelector('text=No case is currently on this device', { timeout: 15000 });
 check('App loads fully offline', true);
 await context.setOffline(false);
+
+// --- 13. Case-code handoff: desk generates a code, escort loads it ---
+// Desk side (this device was just cleared; nothing should be saved here).
+await page.click('.start-option:has-text("Set up a new case")');
+await page.fill('#patientName', 'Robert Smith');
+await page.fill('#dob', '1949-11-02');
+await page.fill('#homeAddress', '3 Mill Lane, Leeds, LS1 2AB, UK');
+await page.fill('#paxMobile', '+44 7700 900456');
+await page.fill('#healixRef', 'HLX-2026-05512');
+await page.fill('#escortName', 'A. Escort RN');
+await page.fill('#pin', '731905');
+await page.fill('#pinConfirm', '731905');
+await page.click('button:has-text("Generate case code for escort")');
+await page.waitForSelector('text=Case code ready');
+const code = await page.locator('textarea.code-input').inputValue();
+check('Desk can generate an encrypted case code', code.startsWith('RPT1.'));
+await page.screenshot({ path: `${SHOT}/3-case-code.png`, fullPage: true });
+await page.click('button:has-text("Done")');
+await page.reload();
+await page.waitForSelector('text=No case is currently on this device');
+check('Generating a code saves nothing on the desk device', true);
+
+// Escort side: a completely fresh device (new browser context).
+const escortContext = await browser.newContext({ viewport: { width: 1024, height: 1366 } });
+const escortPage = await escortContext.newPage();
+await escortPage.goto('http://localhost:4173/Repat-App/');
+await escortPage.click('.start-option:has-text("Load case from code")');
+await escortPage.fill('#case-code', code);
+await escortPage.fill('#load-pin', '999999');
+await escortPage.click('button:has-text("Load case")');
+await escortPage.waitForSelector('text=Could not load the case');
+check('Wrong PIN cannot decrypt the case code', true);
+await escortPage.fill('#load-pin', '731905');
+await escortPage.click('button:has-text("Load case")');
+await escortPage.waitForSelector('.patient-banner');
+const escortBanner = await escortPage.textContent('.patient-banner');
+check(
+  'Escort loads case with code + PIN; details auto-populate',
+  escortBanner.includes('Robert Smith') && escortBanner.includes('HLX-2026-05512'),
+);
+await escortContext.close();
+
+// --- 14. #case= link opens the app with the code pre-filled ---
+const linkContext = await browser.newContext({ viewport: { width: 1024, height: 1366 } });
+const linkPage = await linkContext.newPage();
+await linkPage.goto(`http://localhost:4173/Repat-App/#case=${code}`);
+await linkPage.waitForSelector('#case-code');
+const prefilled = await linkPage.locator('#case-code').inputValue();
+check('Case link pre-fills the code on the escort device', prefilled === code);
+await linkContext.close();
 
 await browser.close();
 console.log(results.join('\n'));

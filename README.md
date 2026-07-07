@@ -7,8 +7,14 @@ offline inflight.
 ## How it works
 
 1. **Case setup (repat desk).** When an escort is assigned a repatriation, the repat desk opens
-   the app on the device, enters the patient details (name, DOB, home address, pax mobile,
-   Healix file reference, escort name) and sets a 4–6 digit PIN for the escort.
+   the app, enters the patient details (name, DOB, home address, pax mobile, Healix file
+   reference, escort name) and sets a 4–6 digit PIN. Two ways to hand the case over:
+   - **Same device:** "Save case on this device" when prepping the escort's tablet directly.
+   - **Remote:** "Generate case code for escort" produces an encrypted code (plus a QR code and
+     a clickable link) to send by email/message. The code is unreadable without the PIN, which
+     is given to the escort separately (e.g. by phone). Nothing is saved on the desk's machine.
+     The escort taps "Load case from code", enters the code (or opens the link/scans the QR)
+     and the PIN — the patient details then appear on their device.
 2. **Documentation (escort).** The escort unlocks the app with the PIN and completes the
    *Pre repatriation assessment at origin* form. Every entry autosaves to the device — no
    connection needed at any point. Fields marked N/A are blanked and disabled, as on the paper
