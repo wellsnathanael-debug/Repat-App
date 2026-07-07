@@ -17,7 +17,7 @@ const context = await browser.newContext({ viewport: { width: 1024, height: 1366
 const page = await context.newPage();
 
 // --- 1. Setup screen ---
-await page.goto('http://localhost:4173/');
+await page.goto('http://localhost:4173/Repat-App/');
 await page.waitForSelector('text=New case setup');
 check('Setup screen shown on first launch', true);
 

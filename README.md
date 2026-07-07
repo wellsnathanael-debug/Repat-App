@@ -36,8 +36,24 @@ npm run build      # production build (dist/)
 npm run preview    # serve the production build
 ```
 
-Deploy the `dist/` folder to any static host (GitHub Pages, Netlify, etc.) over HTTPS — the
-service worker then makes the app installable and fully offline-capable.
+## Deployment
+
+The app deploys automatically to GitHub Pages on every push to the main development branch
+(`.github/workflows/deploy.yml`), and is served at:
+
+**https://wellsnathanael-debug.github.io/Repat-App/**
+
+One-time setup in the GitHub repository (requires the repo to be public on a free plan):
+
+1. Settings → General → change repository visibility to **Public**.
+2. Settings → Pages → Build and deployment → Source: **GitHub Actions**.
+
+After the first visit on a device, add the app to the home screen ("Add to Home Screen" on
+iPad/iPhone, "Install app" on Android) — it then launches like a native app and works fully
+offline. The service worker also picks up new versions automatically when online.
+
+To verify a build end-to-end (fills the form, checks N/A logic, exports the PDF, tests
+offline): `npm run preview -- --port 4173` then `node e2e-check.mjs`.
 
 ## Stack
 
