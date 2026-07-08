@@ -23,7 +23,21 @@ export default function LoadCaseScreen({
   const [busy, setBusy] = useState(false);
 
   const openCaseFile = async (file: File) => {
-    setCode((await file.text()).trim());
+    // Accept any file name/extension — desk staff sometimes rename the
+    // download (e.g. to .pdf), which doesn't change the contents. Only the
+    // contents matter: they must be a case code (starts "RPT1.").
+    const text = (await file.text()).replace(/^﻿/, '').trim();
+    if (!text.startsWith('RPT1.')) {
+      setError(
+        'That file doesn’t look like a case file. Use the file exactly as downloaded by the ' +
+          'repat desk (named Repat_….repat). Renaming it is fine, but a file that was ' +
+          'converted, re-saved or printed to PDF can’t be read — ask the desk to re-send the ' +
+          'original download.',
+      );
+      setFileName('');
+      return;
+    }
+    setCode(text);
     setFileName(file.name);
     setError('');
   };
@@ -75,13 +89,15 @@ export default function LoadCaseScreen({
             <input
               id="case-file"
               type="file"
-              accept=".repat,text/plain,application/octet-stream"
               onChange={(e) => {
                 const file = e.target.files?.[0];
                 if (file) void openCaseFile(file);
                 e.target.value = '';
               }}
             />
+            <div className="field-hint">
+              Any file name is fine — even if it was renamed, the contents are what matter.
+            </div>
             {fileName && <div className="field-hint">Loaded: {fileName}</div>}
           </div>
           <div className="field">

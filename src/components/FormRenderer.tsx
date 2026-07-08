@@ -23,7 +23,11 @@ export default function FormRenderer({
   tab: TabDef;
   caseRecord: CaseRecord;
 }) {
-  const [answers, setAnswers] = useState<Answers | null>(null);
+  // Answers are tagged with the tab they belong to: when the tab changes,
+  // the tag mismatch puts the form back into the loading state on the very
+  // first render — without this, the new tab would briefly render with the
+  // previous tab's answers (useEffect only fires after that render).
+  const [loaded, setLoaded] = useState<{ tabId: string; answers: Answers } | null>(null);
   const [drugOptions, setDrugOptions] = useState<string[]>([]);
 
   useEffect(() => {
@@ -43,7 +47,7 @@ export default function FormRenderer({
           }
         }
       }
-      setAnswers(a);
+      setLoaded({ tabId: tab.id, answers: a });
     });
     return () => {
       cancelled = true;
@@ -67,10 +71,11 @@ export default function FormRenderer({
     });
   }, [needsDrugs, tab.id]);
 
-  if (answers === null) return <div className="loading">Loading…</div>;
+  if (loaded === null || loaded.tabId !== tab.id) return <div className="loading">Loading…</div>;
+  const answers = loaded.answers;
 
   const update = (fieldId: string, value: FieldValue) => {
-    setAnswers((prev) => ({ ...prev, [fieldId]: value }));
+    setLoaded((prev) => prev && { ...prev, answers: { ...prev.answers, [fieldId]: value } });
     void saveAnswer(tab.id, fieldId, value);
   };
 

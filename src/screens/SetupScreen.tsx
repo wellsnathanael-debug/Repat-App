@@ -174,7 +174,9 @@ export default function SetupScreen({
                 Download {generated.fileName}
               </button>
               <div className="field-hint">
-                The escort chooses “Load case from code” → “Open case file” and enters the PIN.
+                Attach the downloaded file to an email exactly as it is — do not save it as a
+                PDF, convert it, or copy its contents into another document. The escort chooses
+                “Load case from code”, picks the file and enters the PIN.
               </div>
             </div>
           )}

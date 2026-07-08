@@ -1,5 +1,5 @@
 import { chromium } from 'playwright-core';
-import { writeFileSync } from 'node:fs';
+import { copyFileSync, writeFileSync } from 'node:fs';
 
 const SHOT = process.env.SHOT_DIR ?? '.';
 const BASE = 'http://localhost:4173/Repat-App/';
@@ -142,7 +142,11 @@ await page.click('.tab:has-text("Handover at destination")');
 await page.waitForSelector('h2:text-is("Destination")');
 const contactTel = await page.locator('.field:has(label:text-is("Home/mobile tel no.")) textarea').inputValue();
 const contactEmail = await page.locator('.field:has(label:text-is("Email address")) textarea').inputValue();
-check('Handover contacts seeded from case', contactTel.includes('7700 900123') && contactEmail.includes('jane.doe@'));
+check(
+  'Handover contacts seeded from case',
+  contactTel.includes('7700 900123') && contactEmail.includes('jane.doe@'),
+  `tel="${contactTel}" email="${contactEmail}"`,
+);
 
 await page.locator('.field:has(label:text-is("Patient handed over to")) button:text-is("Home")').click();
 const destAddress = await page.locator('.field:has(label:has-text("Hospital name / home address")) textarea').inputValue();
@@ -227,7 +231,21 @@ const escortContext = await browser.newContext({ viewport: { width: 1024, height
 const escortPage = await escortContext.newPage();
 await escortPage.goto(BASE);
 await escortPage.click('.start-option:has-text("Load case from code")');
-await escortPage.setInputFiles('#case-file', caseFilePath);
+
+// A genuine non-case file (the PNG report) must give the specific
+// "doesn't look like a case file" error, not a wrong-PIN error.
+await escortPage.setInputFiles('#case-file', `${SHOT}/angiogram-report.png`);
+await escortPage.waitForSelector('text=doesn’t look like a case file');
+check('Non-case file rejected with a specific error', true);
+
+// A .repat file renamed to .pdf (a predictable desk mistake) must still load
+// — renaming doesn't change the contents.
+const renamedPath = caseFilePath.replace(/\.repat$/, '-renamed.pdf');
+copyFileSync(caseFilePath, renamedPath);
+await escortPage.setInputFiles('#case-file', renamedPath);
+await escortPage.waitForSelector('text=Loaded:');
+check('Case file renamed to .pdf still accepted', true);
+
 await escortPage.fill('#load-pin', '999999');
 await escortPage.click('button:has-text("Load case")');
 await escortPage.waitForSelector('text=Could not load the case');
