@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import QRCode from 'qrcode';
-import { createCase, hashPin, type CasePrefills, type FileRecord } from '../db';
+import { createCase, type CasePrefills, type CaseRecord, type FileInput } from '../db';
 import { blobToB64, caseLink, encryptCase, type CodeFile } from '../caseCode';
 
 // Completed by the repat desk when an escort is assigned a repatriation.
@@ -45,7 +45,7 @@ export default function SetupScreen({
   onCreated,
   onBack,
 }: {
-  onCreated: () => void;
+  onCreated: (record: CaseRecord) => void;
   onBack: () => void;
 }) {
   const [details, setDetails] = useState<Details>({
@@ -91,7 +91,7 @@ export default function SetupScreen({
     return true;
   };
 
-  const attachmentRecords = (): Array<Omit<FileRecord, 'id'>> =>
+  const attachmentRecords = (): FileInput[] =>
     attachments.map((f) => ({
       name: f.name,
       type: f.type || 'application/octet-stream',
@@ -103,8 +103,8 @@ export default function SetupScreen({
   const saveOnDevice = async () => {
     if (!validate()) return;
     setBusy(true);
-    await createCase({ ...details, pinHash: await hashPin(pin) }, prefills, attachmentRecords());
-    onCreated();
+    const record = await createCase(details, pin, prefills, attachmentRecords());
+    onCreated(record);
   };
 
   const generateCode = async () => {

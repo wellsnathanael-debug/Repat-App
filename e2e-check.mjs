@@ -46,16 +46,49 @@ await page.waitForSelector('.patient-banner');
 const banner = await page.textContent('.patient-banner');
 check('Patient details auto-populate banner', banner.includes('Jane Elizabeth Doe') && banner.includes('HLX-2026-04821'));
 
+// At-rest encryption: nothing patient-identifiable readable in IndexedDB.
+const idbDump = await page.evaluate(async () => {
+  const idb = await new Promise((res) => {
+    const req = indexedDB.open('repat-app');
+    req.onsuccess = () => res(req.result);
+  });
+  const parts = [];
+  for (const store of Array.from(idb.objectStoreNames)) {
+    const rows = await new Promise((res) => {
+      const r = idb.transaction(store).objectStore(store).getAll();
+      r.onsuccess = () => res(r.result);
+    });
+    parts.push(
+      JSON.stringify(rows, (_k, v) => {
+        if (v instanceof ArrayBuffer) v = new Uint8Array(v);
+        if (ArrayBuffer.isView(v)) return String.fromCharCode(...new Uint8Array(v.buffer, v.byteOffset, v.byteLength));
+        return v;
+      }),
+    );
+  }
+  return parts.join('|');
+});
+check(
+  'No plaintext patient data at rest in IndexedDB',
+  !idbDump.includes('Jane') && !idbDump.includes('Harbour Road') && !idbDump.includes('Apixaban'),
+);
+
 // Lock / unlock round-trip
 await page.click('button:has-text("Lock")');
 await page.waitForSelector('#unlock-pin');
+const lockText = await page.textContent('body');
+check(
+  'Lock screen shows case ref but no patient details',
+  lockText.includes('HLX-2026-04821') && !lockText.includes('Jane'),
+);
 await page.fill('#unlock-pin', '999999');
 await page.click('button:has-text("Unlock")');
-check('Wrong PIN rejected', await page.isVisible('text=Incorrect PIN'));
+await page.waitForSelector('text=Incorrect PIN');
+check('Wrong PIN rejected', true);
 await page.fill('#unlock-pin', '482137');
 await page.click('button:has-text("Unlock")');
 await page.waitForSelector('.patient-banner');
-check('Correct PIN unlocks', true);
+check('Correct PIN unlocks (decryption-verified)', true);
 
 // Desk pre-fill appears in the assessment tab
 const diagPrefill = await page.locator('section:has(h2:text-is("Diagnosis")) textarea').inputValue();
@@ -174,6 +207,19 @@ const handoverPdf = await dl;
 await handoverPdf.saveAs(`${SHOT}/${handoverPdf.suggestedFilename()}`);
 check('Handover letter PDF exported', handoverPdf.suggestedFilename().startsWith('Handover_'), handoverPdf.suggestedFilename());
 
+// ============ Transfer case to a second escort device ============
+await page.fill('#transfer-pin', '111111');
+await page.click('button:has-text("Create transfer file")');
+await page.waitForSelector('text=Incorrect PIN — enter this case');
+check('Transfer file requires the correct case PIN', true);
+await page.fill('#transfer-pin', '482137');
+dl = page.waitForEvent('download', { timeout: 30000 });
+await page.click('button:has-text("Create transfer file")');
+const transferFile = await dl;
+const transferPath = `${SHOT}/${transferFile.suggestedFilename()}`;
+await transferFile.saveAs(transferPath);
+check('Transfer file created', transferFile.suggestedFilename().endsWith('_transfer.repat'));
+
 // ============ Clear case ============
 await page.click('button:has-text("Clear case…")');
 await page.click('button:has-text("Yes, delete everything")');
@@ -274,6 +320,81 @@ await linkPage.goto(`${BASE}#case=RPT1.notarealcode`);
 await linkPage.waitForSelector('#case-code');
 check('Case link opens the load screen with the code pre-filled', (await linkPage.locator('#case-code').inputValue()) === 'RPT1.notarealcode');
 await linkContext.close();
+
+// ============ Part C: transfer round-trip on a second escort device ============
+const secondEscort = await browser.newContext({ viewport: { width: 1024, height: 1366 } });
+const secondPage = await secondEscort.newPage();
+await secondPage.goto(BASE);
+await secondPage.click('.start-option:has-text("Load case from code")');
+await secondPage.setInputFiles('#case-file', transferPath);
+await secondPage.fill('#load-pin', '482137');
+await secondPage.click('button:has-text("Load case")');
+await secondPage.waitForSelector('.patient-banner');
+const secondBanner = await secondPage.textContent('.patient-banner');
+await secondPage.click('.tab:has-text("Repat record")');
+await secondPage.waitForSelector('h2:text-is("Start of repat")');
+const vitalsRows = await secondPage
+  .locator('section:has(h2:text-is("Vital signs during repat")) .repeat-row')
+  .count();
+const lmwhReason = await secondPage
+  .locator('section:has(h2:has-text("Low molecular weight heparin")) .field:has(label:has-text("Reason LMWH not given")) textarea')
+  .inputValue();
+check(
+  'Transfer round-trip: second device continues with all entries',
+  secondBanner.includes('Jane Elizabeth Doe') && vitalsRows === 2 && lmwhReason.includes('apixaban'),
+  `vitalsRows=${vitalsRows}`,
+);
+await secondEscort.close();
+
+// ============ Part D: PIN attempt lockout ============
+const lockoutContext = await browser.newContext({ viewport: { width: 1024, height: 1366 } });
+const lockoutPage = await lockoutContext.newPage();
+await lockoutPage.goto(BASE);
+await lockoutPage.click('.start-option:has-text("Set up a new case")');
+await lockoutPage.fill('#patientName', 'L T');
+await lockoutPage.fill('#dob', '1990-01-01');
+await lockoutPage.fill('#homeAddress', 'A');
+await lockoutPage.fill('#paxMobile', '1');
+await lockoutPage.fill('#healixRef', 'HLX-LOCK');
+await lockoutPage.fill('#escortName', 'E');
+await lockoutPage.fill('#pin', '482137');
+await lockoutPage.fill('#pinConfirm', '482137');
+await lockoutPage.click('button:has-text("Save case on this device")');
+await lockoutPage.waitForSelector('.patient-banner');
+await lockoutPage.click('button:has-text("Lock")');
+for (let i = 0; i < 5; i++) {
+  await lockoutPage.fill('#unlock-pin', '999999');
+  await lockoutPage.click('button:has-text("Unlock")');
+  await lockoutPage.waitForSelector('.error');
+}
+const lockoutMsg = await lockoutPage.textContent('.error');
+check('5 wrong PINs trigger an escalating lockout', /Too many incorrect attempts/.test(lockoutMsg ?? ''), lockoutMsg ?? '');
+// Even the correct PIN is refused while locked out.
+await lockoutPage.fill('#unlock-pin', '482137');
+await lockoutPage.click('button:has-text("Unlock")');
+await lockoutPage.waitForSelector('text=Too many incorrect attempts');
+check('Correct PIN also refused during lockout window', true);
+await lockoutContext.close();
+
+// ============ Part E: auto-lock after inactivity ============
+const autoContext = await browser.newContext({ viewport: { width: 1024, height: 1366 } });
+await autoContext.addInitScript(() => localStorage.setItem('repat-autolock-s', '2'));
+const autoPage = await autoContext.newPage();
+await autoPage.goto(BASE);
+await autoPage.click('.start-option:has-text("Set up a new case")');
+await autoPage.fill('#patientName', 'A T');
+await autoPage.fill('#dob', '1990-01-01');
+await autoPage.fill('#homeAddress', 'A');
+await autoPage.fill('#paxMobile', '1');
+await autoPage.fill('#healixRef', 'HLX-AUTO');
+await autoPage.fill('#escortName', 'E');
+await autoPage.fill('#pin', '482137');
+await autoPage.fill('#pinConfirm', '482137');
+await autoPage.click('button:has-text("Save case on this device")');
+await autoPage.waitForSelector('.patient-banner');
+await autoPage.waitForSelector('#unlock-pin', { timeout: 10000 });
+check('Auto-lock engages after inactivity', true);
+await autoContext.close();
 
 await browser.close();
 console.log(results.join('\n'));

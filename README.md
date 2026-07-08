@@ -24,7 +24,11 @@ offline inflight.
    the repat desk via the device share sheet (email etc.). Once receipt is confirmed, *Clear
    case* wipes all patient data from the device, ready for the next repatriation.
 
-No server is involved: patient data only ever exists on the device and in the exported PDF.
+No server is involved: patient data only ever exists on the device (encrypted at rest with a
+PIN-derived key — see `SECURITY.md`), in encrypted case/transfer files, and in the exported
+PDFs. The app auto-locks after 15 minutes of inactivity and throttles PIN attempts. For
+two-escort missions, "Transfer case to a second escort device" (Export screen) moves the whole
+live case between devices offline.
 
 ## Tabs
 

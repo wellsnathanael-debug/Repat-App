@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { b64ToBlob, decryptCase } from '../caseCode';
-import { createCase, hashPin } from '../db';
+import { createCase, type CaseRecord } from '../db';
 
 // Escort path: paste the case code from the repat desk, open a .repat case
 // file, or arrive via a #case= link — then enter the PIN and the patient
@@ -13,7 +13,7 @@ export default function LoadCaseScreen({
   onBack,
 }: {
   initialCode?: string;
-  onLoaded: () => void;
+  onLoaded: (record: CaseRecord) => void;
   onBack: () => void;
 }) {
   const [code, setCode] = useState(initialCode ?? '');
@@ -59,12 +59,16 @@ export default function LoadCaseScreen({
       addedBy: 'desk' as const,
       addedAt: new Date().toISOString(),
     }));
-    await createCase(
-      { ...payload.details, pinHash: await hashPin(pin) },
+    // Transfer files carry the full answers dump; desk case files carry
+    // prefills — createCase handles both.
+    const record = await createCase(
+      payload.details,
+      pin,
       payload.prefills,
       attachments,
+      payload.answers,
     );
-    onLoaded();
+    onLoaded(record);
   };
 
   return (

@@ -6,13 +6,15 @@
 // containing the same code text.
 //
 // Format: RPT1.<base64url(salt[16] | iv[12] | AES-GCM ciphertext)>
-// Plaintext v2: JSON { v: 2, details, prefills?, files? } (v1 was a bare
-// details object — still accepted on decrypt).
+// Plaintext v3: JSON { v: 3, details, prefills?, files?, answers? } — the
+// answers dump is set for device-to-device transfers. v2 (no answers) and v1
+// (bare details object) are still accepted on decrypt.
 // Key derivation: PBKDF2-SHA256, 310,000 iterations (OWASP guidance).
 
-import type { CaseRecord, CasePrefills } from './db';
+import type { CaseDetails, CasePrefills } from './db';
+import type { FieldValue } from './schema/types';
 
-export type CaseDetails = Omit<CaseRecord, 'id' | 'createdAt' | 'pinHash'>;
+export type { CaseDetails };
 
 export interface CodeFile {
   name: string;
@@ -24,6 +26,9 @@ export interface CasePayload {
   details: CaseDetails;
   prefills?: CasePrefills;
   files?: CodeFile[];
+  /** Full answers dump (`tabId/fieldId` keys) — set for device-to-device
+   *  transfers so the receiving escort continues where the case left off. */
+  answers?: Record<string, FieldValue>;
 }
 
 const PREFIX = 'RPT1.';
@@ -72,7 +77,7 @@ export async function encryptCase(payload: CasePayload, pin: string): Promise<st
   const salt = crypto.getRandomValues(new Uint8Array(16));
   const iv = crypto.getRandomValues(new Uint8Array(12));
   const key = await deriveKey(pin, salt);
-  const plaintext = new TextEncoder().encode(JSON.stringify({ v: 2, ...payload }));
+  const plaintext = new TextEncoder().encode(JSON.stringify({ v: 3, ...payload }));
   const ciphertext = new Uint8Array(
     await crypto.subtle.encrypt({ name: 'AES-GCM', iv: iv as BufferSource }, key, plaintext),
   );
@@ -100,8 +105,13 @@ export async function decryptCase(code: string, pin: string): Promise<CasePayloa
       ciphertext as BufferSource,
     );
     const parsed = JSON.parse(new TextDecoder().decode(plaintext));
-    if (parsed.v === 2) {
-      return { details: parsed.details, prefills: parsed.prefills, files: parsed.files };
+    if (parsed.v === 2 || parsed.v === 3) {
+      return {
+        details: parsed.details,
+        prefills: parsed.prefills,
+        files: parsed.files,
+        answers: parsed.answers,
+      };
     }
     // v1 payload: a bare details object (no email/hospitalName fields).
     return { details: { email: '', hospitalName: '', ...parsed } };

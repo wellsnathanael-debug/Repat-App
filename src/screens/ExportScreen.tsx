@@ -1,5 +1,13 @@
 import { useEffect, useState } from 'react';
-import { clearCase, getAnswers, listFiles, type CaseRecord } from '../db';
+import {
+  clearCase,
+  exportAllAnswers,
+  getAnswers,
+  listFiles,
+  verifyPin,
+  type CaseRecord,
+} from '../db';
+import { blobToB64, encryptCase, type CodeFile } from '../caseCode';
 import { tabs } from '../schema/preRepatAssessment';
 import type { Answers } from '../schema/types';
 import { lmwhComplete } from '../components/fields';
@@ -136,6 +144,60 @@ export default function ExportScreen({
     onCleared();
   };
 
+  // Transfer the whole live case (details, every entry, attachments) to a
+  // second escort device as an encrypted .repat file — fully offline
+  // (AirDrop/Bluetooth/cable). Requires the case PIN, which also becomes the
+  // PIN on the receiving device. Not gated by the LMWH check: transfers
+  // happen mid-mission.
+  const [transferPin, setTransferPin] = useState('');
+  const [transferMsg, setTransferMsg] = useState('');
+
+  const createTransferFile = async () => {
+    setBusy(true);
+    setTransferMsg('');
+    try {
+      if (!(await verifyPin(transferPin))) {
+        setTransferMsg('Incorrect PIN — enter this case’s PIN to create a transfer file.');
+        return;
+      }
+      const answers = await exportAllAnswers();
+      const files: CodeFile[] = [];
+      for (const f of await listFiles()) {
+        files.push({ name: f.name, type: f.type, dataB64: await blobToB64(f.data) });
+      }
+      const { id: _id, createdAt: _createdAt, ...details } = caseRecord;
+      const code = await encryptCase(
+        { details, answers, files: files.length ? files : undefined },
+        transferPin,
+      );
+      const clean = (s: string) => s.replace(/[^A-Za-z0-9-]/g, '');
+      const name = `Repat_${clean(caseRecord.healixRef)}_transfer.repat`;
+      const file = new File([code], name, { type: 'application/octet-stream' });
+      if (navigator.canShare?.({ files: [file] })) {
+        await navigator.share({ files: [file], title: name });
+      } else {
+        const url = URL.createObjectURL(file);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = name;
+        a.click();
+        URL.revokeObjectURL(url);
+      }
+      setTransferMsg(
+        `Transfer file created (${name}). Send it to the other device (AirDrop/Bluetooth works ` +
+          'offline); the other escort loads it via “Load case from code” with the same PIN. ' +
+          'Only document on one device at a time.',
+      );
+    } catch (err) {
+      if ((err as DOMException)?.name !== 'AbortError') {
+        setTransferMsg('Could not create the transfer file. Please try again.');
+        console.error(err);
+      }
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
     <div className="screen export-screen">
       <header className="app-header main-header">
@@ -176,6 +238,40 @@ export default function ExportScreen({
             </button>
           </div>
           {message && <p className="export-message">{message}</p>}
+        </section>
+
+        <section className="form-section">
+          <h2 className="section-title">Transfer case to a second escort device</h2>
+          <p className="field-note">
+            For two-escort missions or a device swap: creates an encrypted transfer file
+            containing the whole live case (all entries and reports). Move it to the other device
+            — AirDrop or Bluetooth work offline — and the other escort loads it with the same
+            PIN. To avoid conflicting records, document on <strong>one device at a time</strong>,
+            like a single paper chart.
+          </p>
+          <div className="field">
+            <label className="field-label" htmlFor="transfer-pin">
+              Case PIN
+            </label>
+            <input
+              id="transfer-pin"
+              className="field-input pin-input"
+              type="password"
+              inputMode="numeric"
+              autoComplete="off"
+              maxLength={6}
+              value={transferPin}
+              onChange={(e) => setTransferPin(e.target.value.replace(/\D/g, ''))}
+            />
+          </div>
+          <button
+            className="btn btn-secondary"
+            onClick={createTransferFile}
+            disabled={busy || transferPin.length < 4}
+          >
+            Create transfer file
+          </button>
+          {transferMsg && <p className="export-message">{transferMsg}</p>}
         </section>
 
         <section className="form-section danger-zone">
