@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { CaseRecord } from '../db';
 import { tabs } from '../schema/preRepatAssessment';
 import FormRenderer from '../components/FormRenderer';
+import UploadsTab from './UploadsTab';
 
 export default function MainScreen({
   caseRecord,
@@ -70,7 +71,7 @@ export default function MainScreen({
             className={`tab ${tab.id === activeTabId ? 'active' : ''}`}
             onClick={() => setActiveTabId(tab.id)}
           >
-            {tab.title}
+            {tab.shortTitle ?? tab.title}
           </button>
         ))}
       </nav>
@@ -81,8 +82,10 @@ export default function MainScreen({
             <h2>{activeTab.title}</h2>
             <p>This section is coming soon.</p>
           </div>
+        ) : activeTab.custom === 'uploads' ? (
+          <UploadsTab />
         ) : (
-          <FormRenderer tab={activeTab} />
+          <FormRenderer tab={activeTab} caseRecord={caseRecord} />
         )}
       </main>
     </div>

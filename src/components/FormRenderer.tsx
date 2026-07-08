@@ -1,27 +1,88 @@
 import { useEffect, useState } from 'react';
 import type { Answers, FieldValue, TabDef } from '../schema/types';
 import { sectionNAKey } from '../schema/types';
-import { getAnswers, saveAnswer } from '../db';
-import { DateTimeField, NoteField, TextField, TextWithNAField, YesNoNAField } from './fields';
+import { getAnswers, saveAnswer, type CaseRecord } from '../db';
+import { kitBagMedications } from '../schema/kitBag';
+import {
+  ChoiceField,
+  DateTimeField,
+  LmwhField,
+  NoteField,
+  RepeatField,
+  TextField,
+  TextWithNAField,
+  TimestampField,
+  TransportTimeField,
+  YesNoNAField,
+} from './fields';
 
-export default function FormRenderer({ tab }: { tab: TabDef }) {
+export default function FormRenderer({
+  tab,
+  caseRecord,
+}: {
+  tab: TabDef;
+  caseRecord: CaseRecord;
+}) {
   const [answers, setAnswers] = useState<Answers | null>(null);
+  const [drugOptions, setDrugOptions] = useState<string[]>([]);
 
   useEffect(() => {
     let cancelled = false;
     getAnswers(tab.id).then((a) => {
-      if (!cancelled) setAnswers(a);
+      if (cancelled) return;
+      // Seed empty fields from the case record the first time the tab opens
+      // (e.g. contact tel/email on the handover tab). Values stay editable.
+      for (const section of tab.sections) {
+        for (const field of section.fields) {
+          if (field.seedFrom && a[field.id] === undefined) {
+            const seed = caseRecord[field.seedFrom];
+            if (seed) {
+              a[field.id] = { text: seed };
+              void saveAnswer(tab.id, field.id, a[field.id]);
+            }
+          }
+        }
+      }
+      setAnswers(a);
     });
     return () => {
       cancelled = true;
     };
-  }, [tab.id]);
+  }, [tab.id, caseRecord]);
+
+  // Drug suggestions for 'repeat' fields with a drug column: the patient's
+  // own medication list (one per line, entered by the desk or escort on the
+  // assessment tab) plus the kit bag contents.
+  const needsDrugs = tab.sections.some((s) =>
+    s.fields.some((f) => f.columns?.some((c) => c.kind === 'drug')),
+  );
+  useEffect(() => {
+    if (!needsDrugs) return;
+    getAnswers('pre-repat-assessment').then((a) => {
+      const patientMeds = (a.medsList?.text ?? '')
+        .split('\n')
+        .map((l) => l.trim())
+        .filter(Boolean);
+      setDrugOptions([...patientMeds, ...kitBagMedications]);
+    });
+  }, [needsDrugs, tab.id]);
 
   if (answers === null) return <div className="loading">Loading…</div>;
 
   const update = (fieldId: string, value: FieldValue) => {
     setAnswers((prev) => ({ ...prev, [fieldId]: value }));
     void saveAnswer(tab.id, fieldId, value);
+  };
+
+  // Handover destination: picking Home/Hospital fills the address box from
+  // the case record if it's still empty (manual edits are never overwritten).
+  const onDestinationChange = (value: FieldValue) => {
+    update('destinationType', value);
+    const address = answers['destinationAddress']?.text?.trim();
+    if (!address) {
+      const seed = value.choice === 'home' ? caseRecord.homeAddress : caseRecord.hospitalName;
+      if (seed) update('destinationAddress', { text: seed });
+    }
   };
 
   return (
@@ -59,7 +120,11 @@ export default function FormRenderer({ tab }: { tab: TabDef }) {
                 field,
                 value,
                 disabled: sectionNA,
-                onChange: (v: FieldValue) => update(field.id, v),
+                drugOptions,
+                onChange:
+                  field.id === 'destinationType'
+                    ? onDestinationChange
+                    : (v: FieldValue) => update(field.id, v),
               };
               switch (field.type) {
                 case 'note':
@@ -72,6 +137,22 @@ export default function FormRenderer({ tab }: { tab: TabDef }) {
                   return <YesNoNAField key={field.id} {...props} />;
                 case 'datetime':
                   return <DateTimeField key={field.id} {...props} />;
+                case 'timestamp':
+                  return <TimestampField key={field.id} {...props} />;
+                case 'choice':
+                  return <ChoiceField key={field.id} {...props} />;
+                case 'repeat':
+                  return <RepeatField key={field.id} {...props} />;
+                case 'lmwh':
+                  return <LmwhField key={field.id} {...props} />;
+                case 'transportTime':
+                  return (
+                    <TransportTimeField
+                      key={field.id}
+                      field={field}
+                      arrivalIso={answers['arrivalDateTime']?.iso}
+                    />
+                  );
               }
             })}
           </section>

@@ -1,4 +1,6 @@
 import type { TabDef } from './types';
+import { repatRecord } from './repatRecord';
+import { handover } from './handover';
 
 // Full specification of the "Pre repatriation assessment at origin" tab.
 // Patient details (name, DOB, address, mobile, Healix ref, escort) are not
@@ -7,6 +9,7 @@ import type { TabDef } from './types';
 export const preRepatAssessment: TabDef = {
   id: 'pre-repat-assessment',
   title: 'Pre repatriation assessment at origin',
+  shortTitle: 'Pre-repat assessment',
   sections: [
     {
       id: 'diagnosis',
@@ -236,7 +239,7 @@ export const preRepatAssessment: TabDef = {
 
 export const tabs: TabDef[] = [
   preRepatAssessment,
-  { id: 'inflight', title: 'In-flight record', placeholder: true, sections: [] },
-  { id: 'handover', title: 'Handover at destination', placeholder: true, sections: [] },
-  { id: 'uploads', title: 'Medical reports / Uploads', placeholder: true, sections: [] },
+  repatRecord,
+  handover,
+  { id: 'uploads', title: 'Medical reports / Uploads', custom: 'uploads', sections: [] },
 ];

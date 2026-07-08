@@ -28,10 +28,24 @@ No server is involved: patient data only ever exists on the device and in the ex
 
 ## Tabs
 
-- **Pre repatriation assessment at origin** — implemented in full.
-- **In-flight record**, **Handover at destination**, **Medical reports / Uploads** — placeholders;
-  each is added by writing a schema file in `src/schema/` (see `preRepatAssessment.ts` for the
-  pattern), no new UI code required.
+- **Pre repatriation assessment at origin** — full assessment; clinical fields (diagnosis,
+  history, allergies, PMH, medications) can be pre-filled by the repat desk at setup.
+- **Repat record** — the whole transfer incl. ground movements: start of repat, baseline vitals,
+  repeatable vital-signs log and medications-given log (auto-timestamped in UK time with UTC
+  alongside, editable; drug dropdown = patient meds + kit bag list in `src/schema/kitBag.ts`),
+  **mandatory LMWH section** (blocks export until complete), free-text transport log.
+- **Handover at destination** — Home/Hospital destination (address copied from the case,
+  overridable), contacts seeded from the case, arrival time, auto-calculated total transport
+  time, and the escort's handover letter.
+- **Medical reports / Uploads** — reports attached by the desk at setup plus photos/PDFs the
+  escort adds en route.
+
+## Exports
+
+Two PDFs from the same data: the **Full repat record** (everything, for the repat desk / case
+file) and the **Handover letter** (clinical summary for the receiving hospital/GP — no internal
+checklists). Styling follows the Healix brand (palette approximated from healix.com; refine via
+`src/styles.css` and `src/pdf/common.tsx` when the brand book is available).
 
 ## Development
 

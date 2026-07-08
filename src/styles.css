@@ -1,14 +1,21 @@
+/* Healix brand styling — palette approximated from healix.com (deep forest
+   green, vibrant green accent, cream, soft orange highlight; pill buttons).
+   Refine hex codes / add brand font files when the brand book is supplied. */
+
 :root {
-  --brand: #0f4c81;
-  --brand-dark: #0b3a63;
-  --brand-light: #e8eef5;
-  --bg: #f4f6f9;
+  --brand: #0e3b2e;
+  --brand-dark: #092a20;
+  --accent: #56c271;
+  --accent-soft: #e4f2e8;
+  --orange: #e58a3a;
+  --orange-soft: #fbe3cd;
+  --bg: #faf7f2;
   --card: #ffffff;
-  --text: #1a2433;
-  --muted: #5b6878;
-  --border: #cdd6e0;
+  --text: #1a2e26;
+  --muted: #5b6b62;
+  --border: #d8ded9;
   --danger: #b3261e;
-  --radius: 10px;
+  --radius: 14px;
 }
 
 * {
@@ -17,7 +24,8 @@
 
 body {
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: 'Helvetica Neue', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial,
+    sans-serif;
   background: var(--bg);
   color: var(--text);
   -webkit-font-smoothing: antialiased;
@@ -44,6 +52,17 @@ body {
   margin: 0;
   font-size: 22px;
   color: var(--brand);
+  letter-spacing: -0.01em;
+}
+
+.app-header h1::before {
+  content: 'Healix';
+  display: block;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--accent);
+  letter-spacing: 0.02em;
+  text-transform: none;
 }
 
 .subtitle {
@@ -63,6 +82,7 @@ body {
 .header-actions {
   display: flex;
   gap: 8px;
+  flex-wrap: wrap;
 }
 
 /* Patient banner (auto-populated details) */
@@ -84,8 +104,8 @@ body {
   display: block;
   font-size: 11px;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
-  opacity: 0.75;
+  letter-spacing: 0.05em;
+  color: var(--accent);
 }
 
 .pb-value {
@@ -107,9 +127,9 @@ body {
 
 .tab {
   flex-shrink: 0;
-  padding: 12px 16px;
+  padding: 12px 18px;
   border: 1px solid var(--border);
-  border-radius: var(--radius) var(--radius) 0 0;
+  border-radius: 999px;
   background: var(--card);
   color: var(--muted);
   font-size: 14px;
@@ -153,8 +173,8 @@ body {
 }
 
 .form-section.major {
-  border-color: var(--brand);
-  background: var(--brand-light);
+  border-color: var(--accent);
+  background: var(--accent-soft);
 }
 
 /* Fields */
@@ -187,21 +207,25 @@ body {
   font-size: 16px; /* prevents iOS zoom on focus */
   font-family: inherit;
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 10px;
   background: #fff;
   color: var(--text);
   resize: vertical;
 }
 
+.field-textarea.tall {
+  min-height: 180px;
+}
+
 .field-textarea:focus,
 .field-input:focus {
-  outline: 2px solid var(--brand);
+  outline: 2px solid var(--accent);
   outline-offset: -1px;
 }
 
 .field-textarea:disabled,
 .field-input:disabled {
-  background: #eef1f5;
+  background: #f0efe9;
   color: var(--muted);
 }
 
@@ -215,10 +239,10 @@ body {
   font-size: 14px;
   font-style: italic;
   color: var(--muted);
-  background: var(--brand-light);
-  border-left: 3px solid var(--brand);
+  background: var(--accent-soft);
+  border-left: 3px solid var(--accent);
   padding: 8px 12px;
-  border-radius: 0 8px 8px 0;
+  border-radius: 0 10px 10px 0;
   margin: 0 0 14px;
 }
 
@@ -230,7 +254,7 @@ body {
   font-size: 14px;
   font-weight: 600;
   color: var(--muted);
-  padding: 6px 10px;
+  padding: 6px 12px;
   border: 1px solid var(--border);
   border-radius: 999px;
   cursor: pointer;
@@ -247,8 +271,8 @@ body {
 }
 
 .na-toggle.checked {
-  background: var(--brand-light);
-  border-color: var(--brand);
+  background: var(--orange-soft);
+  border-color: var(--orange);
   color: var(--brand);
 }
 
@@ -256,19 +280,20 @@ body {
   margin-bottom: 10px;
 }
 
-/* Yes/No/NA */
+/* Yes/No/NA + choices */
 .choice-group {
   display: flex;
   gap: 8px;
+  flex-wrap: wrap;
 }
 
 .choice-btn {
   min-width: 72px;
-  padding: 12px 18px;
+  padding: 12px 20px;
   font-size: 15px;
   font-weight: 600;
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 999px;
   background: #fff;
   color: var(--muted);
   cursor: pointer;
@@ -285,14 +310,95 @@ body {
   cursor: default;
 }
 
-/* Buttons */
+/* Timestamps */
+.timestamp-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.timestamp-input {
+  max-width: 240px;
+}
+
+.timestamp-display {
+  margin-top: 4px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--brand);
+}
+
+/* Repeating entries (vitals log, medications given) */
+.repeat-row {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin-bottom: 10px;
+  background: #fff;
+}
+
+.repeat-row-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.repeat-row-num {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.repeat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: 8px;
+}
+
+.repeat-cell.wide {
+  grid-column: span 2;
+}
+
+.repeat-cell-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+
+/* LMWH */
+.lmwh-field .lmwh-details {
+  margin-top: 12px;
+  border-left: 3px solid var(--orange);
+  padding-left: 12px;
+}
+
+/* Computed value */
+.computed-value {
+  padding: 12px;
+  border-radius: 10px;
+  background: var(--accent-soft);
+  font-weight: 700;
+  color: var(--brand);
+}
+
+/* Buttons — Healix pill style */
 .btn {
-  padding: 12px 20px;
+  padding: 12px 22px;
   font-size: 15px;
   font-weight: 600;
-  border-radius: 8px;
+  border-radius: 999px;
   border: 1px solid transparent;
   cursor: pointer;
+  font-family: inherit;
+}
+
+.btn-small {
+  padding: 7px 14px;
+  font-size: 13px;
 }
 
 .btn-primary {
@@ -310,6 +416,13 @@ body {
   border-color: var(--border);
 }
 
+.btn-ghost {
+  background: transparent;
+  color: var(--muted);
+  border-color: transparent;
+  text-decoration: underline;
+}
+
 .btn-danger {
   background: var(--danger);
   color: #fff;
@@ -323,7 +436,7 @@ body {
 /* Setup / lock */
 .setup-form,
 .lock-form {
-  max-width: 520px;
+  max-width: 560px;
 }
 
 .lock-form {
@@ -345,6 +458,13 @@ body {
   color: var(--danger);
   font-weight: 600;
   font-size: 14px;
+}
+
+.export-warning {
+  background: var(--orange-soft);
+  border-left: 3px solid var(--orange);
+  padding: 10px 12px;
+  border-radius: 0 10px 10px 0;
 }
 
 /* Export */
@@ -386,7 +506,7 @@ body {
 }
 
 .start-option:active {
-  border-color: var(--brand);
+  border-color: var(--accent);
 }
 
 .start-option-title {
@@ -414,7 +534,46 @@ body {
   width: 240px;
   max-width: 100%;
   border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+/* File lists (attachments / uploads) */
+.file-list {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+}
+
+.file-list li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+  border-top: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+
+.file-name {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.file-size {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.file-thumb {
+  width: 56px;
+  height: 56px;
+  object-fit: cover;
   border-radius: 8px;
+  border: 1px solid var(--border);
+  cursor: pointer;
+}
+
+.file-icon {
+  font-size: 28px;
 }
 
 .placeholder-panel {
@@ -437,5 +596,9 @@ body {
 
   .patient-banner-grid {
     grid-template-columns: 1fr 1fr;
+  }
+
+  .repeat-cell.wide {
+    grid-column: span 1;
   }
 }

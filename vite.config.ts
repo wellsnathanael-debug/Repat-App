@@ -19,8 +19,8 @@ export default defineConfig({
         name: 'Repatriation Documentation',
         short_name: 'Repat Docs',
         description: 'Offline repatriation documentation for medical escorts',
-        theme_color: '#0f4c81',
-        background_color: '#f4f6f9',
+        theme_color: '#0e3b2e',
+        background_color: '#faf7f2',
         display: 'standalone',
         orientation: 'any',
         icons: [

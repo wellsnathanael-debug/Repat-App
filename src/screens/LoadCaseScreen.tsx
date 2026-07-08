@@ -1,9 +1,11 @@
 import { useState } from 'react';
-import { decryptCase } from '../caseCode';
+import { b64ToBlob, decryptCase } from '../caseCode';
 import { createCase, hashPin } from '../db';
 
-// Escort path: paste the case code from the repat desk (or arrive via a
-// #case= link), enter the PIN, and the patient details populate this device.
+// Escort path: paste the case code from the repat desk, open a .repat case
+// file, or arrive via a #case= link — then enter the PIN and the patient
+// details (plus any pre-filled clinical info and attached reports) populate
+// this device.
 
 export default function LoadCaseScreen({
   initialCode,
@@ -15,21 +17,39 @@ export default function LoadCaseScreen({
   onBack: () => void;
 }) {
   const [code, setCode] = useState(initialCode ?? '');
+  const [fileName, setFileName] = useState('');
   const [pin, setPin] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+
+  const openCaseFile = async (file: File) => {
+    setCode((await file.text()).trim());
+    setFileName(file.name);
+    setError('');
+  };
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setBusy(true);
-    const details = await decryptCase(code, pin);
-    if (!details) {
+    const payload = await decryptCase(code, pin);
+    if (!payload) {
       setError('Could not load the case — check the code is complete and the PIN is correct.');
       setBusy(false);
       return;
     }
-    await createCase({ ...details, pinHash: await hashPin(pin) });
+    const attachments = (payload.files ?? []).map((f) => ({
+      name: f.name,
+      type: f.type,
+      data: b64ToBlob(f.dataB64, f.type),
+      addedBy: 'desk' as const,
+      addedAt: new Date().toISOString(),
+    }));
+    await createCase(
+      { ...payload.details, pinHash: await hashPin(pin) },
+      payload.prefills,
+      attachments,
+    );
     onLoaded();
   };
 
@@ -49,8 +69,24 @@ export default function LoadCaseScreen({
       <form className="setup-form" onSubmit={submit}>
         <section className="form-section">
           <div className="field">
+            <label className="field-label" htmlFor="case-file">
+              Case file (if the desk sent a .repat file)
+            </label>
+            <input
+              id="case-file"
+              type="file"
+              accept=".repat,text/plain,application/octet-stream"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) void openCaseFile(file);
+                e.target.value = '';
+              }}
+            />
+            {fileName && <div className="field-hint">Loaded: {fileName}</div>}
+          </div>
+          <div className="field">
             <label className="field-label" htmlFor="case-code">
-              Case code
+              Or paste the case code
             </label>
             <textarea
               id="case-code"
@@ -58,7 +94,10 @@ export default function LoadCaseScreen({
               rows={5}
               value={code}
               placeholder="Paste the case code here (starts with RPT1.)"
-              onChange={(e) => setCode(e.target.value)}
+              onChange={(e) => {
+                setCode(e.target.value);
+                setFileName('');
+              }}
             />
           </div>
           <div className="field">

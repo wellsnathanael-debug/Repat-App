@@ -1,15 +1,16 @@
 import { useState } from 'react';
 import QRCode from 'qrcode';
-import { createCase, hashPin } from '../db';
-import { caseLink, encryptCase } from '../caseCode';
+import { createCase, hashPin, type CasePrefills, type FileRecord } from '../db';
+import { blobToB64, caseLink, encryptCase, type CodeFile } from '../caseCode';
 
 // Completed by the repat desk when an escort is assigned a repatriation.
 // Two ways to hand the case to the escort:
 //  - "Save on this device" when setting up the escort's own tablet directly.
 //  - "Generate case code" to send the (encrypted) details to an escort who
-//    is elsewhere; nothing is saved on the desk's machine.
+//    is elsewhere; nothing is saved on the desk's machine. With attached
+//    reports the case travels as an encrypted .repat file instead of QR/text.
 
-const FIELDS = [
+const REQUIRED_FIELDS = [
   { key: 'patientName', label: 'Patient name', type: 'text' },
   { key: 'dob', label: 'Date of birth', type: 'date' },
   { key: 'homeAddress', label: 'Home address', type: 'text' },
@@ -18,7 +19,27 @@ const FIELDS = [
   { key: 'escortName', label: 'Escort name', type: 'text' },
 ] as const;
 
-type Details = Record<(typeof FIELDS)[number]['key'], string>;
+const OPTIONAL_FIELDS = [
+  { key: 'email', label: 'Patient/NOK email address (for handover)', type: 'email' },
+  { key: 'hospitalName', label: 'Destination hospital name (if applicable)', type: 'text' },
+] as const;
+
+const CLINICAL_FIELDS: Array<{ key: keyof CasePrefills; label: string; hint?: string }> = [
+  { key: 'diagnosis', label: 'Diagnosis' },
+  { key: 'historyTreatment', label: 'History and treatment abroad' },
+  { key: 'allergies', label: 'Allergies' },
+  { key: 'pastMedicalHistory', label: 'Past Medical History' },
+  {
+    key: 'medications',
+    label: 'Current medications',
+    hint: 'One per line (drug/route/dosage/frequency) — these also appear in the escort’s “Medications given” dropdown.',
+  },
+];
+
+type Details = Record<
+  (typeof REQUIRED_FIELDS)[number]['key'] | (typeof OPTIONAL_FIELDS)[number]['key'],
+  string
+>;
 
 export default function SetupScreen({
   onCreated,
@@ -34,19 +55,26 @@ export default function SetupScreen({
     paxMobile: '',
     healixRef: '',
     escortName: '',
+    email: '',
+    hospitalName: '',
   });
+  const [prefills, setPrefills] = useState<CasePrefills>({});
+  const [attachments, setAttachments] = useState<File[]>([]);
   const [pin, setPin] = useState('');
   const [pinConfirm, setPinConfirm] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
-  const [generated, setGenerated] = useState<{ code: string; link: string; qr: string } | null>(
-    null,
-  );
+  const [generated, setGenerated] = useState<{
+    code: string;
+    link: string;
+    qr: string | null;
+    fileName: string;
+  } | null>(null);
   const [copied, setCopied] = useState('');
 
   const validate = (): boolean => {
     setError('');
-    for (const f of FIELDS) {
+    for (const f of REQUIRED_FIELDS) {
       if (!details[f.key].trim()) {
         setError(`Please complete: ${f.label}`);
         return false;
@@ -63,21 +91,43 @@ export default function SetupScreen({
     return true;
   };
 
+  const attachmentRecords = (): Array<Omit<FileRecord, 'id'>> =>
+    attachments.map((f) => ({
+      name: f.name,
+      type: f.type || 'application/octet-stream',
+      data: f,
+      addedBy: 'desk',
+      addedAt: new Date().toISOString(),
+    }));
+
   const saveOnDevice = async () => {
     if (!validate()) return;
     setBusy(true);
-    await createCase({ ...details, pinHash: await hashPin(pin) });
+    await createCase({ ...details, pinHash: await hashPin(pin) }, prefills, attachmentRecords());
     onCreated();
   };
 
   const generateCode = async () => {
     if (!validate()) return;
     setBusy(true);
-    const code = await encryptCase(details, pin);
-    const link = caseLink(code);
-    const qr = await QRCode.toDataURL(link, { width: 320, margin: 2 });
-    setGenerated({ code, link, qr });
-    setBusy(false);
+    try {
+      const files: CodeFile[] = [];
+      for (const f of attachments) {
+        files.push({ name: f.name, type: f.type || 'application/octet-stream', dataB64: await blobToB64(f) });
+      }
+      const code = await encryptCase(
+        { details, prefills, files: files.length ? files : undefined },
+        pin,
+      );
+      const link = caseLink(code);
+      // QR codes and pasted text only work for small payloads; with attached
+      // reports the case is handed over as an encrypted file instead.
+      const qr = link.length <= 2000 ? await QRCode.toDataURL(link, { width: 320, margin: 2 }) : null;
+      const clean = (s: string) => s.replace(/[^A-Za-z0-9-]/g, '');
+      setGenerated({ code, link, qr, fileName: `Repat_${clean(details.healixRef)}.repat` });
+    } finally {
+      setBusy(false);
+    }
   };
 
   const copy = async (text: string, what: string) => {
@@ -86,38 +136,78 @@ export default function SetupScreen({
     setTimeout(() => setCopied(''), 2000);
   };
 
+  const downloadCaseFile = () => {
+    if (!generated) return;
+    const blob = new Blob([generated.code], { type: 'application/octet-stream' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = generated.fileName;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   if (generated) {
+    const hasFiles = attachments.length > 0;
     return (
       <div className="screen setup-screen">
         <header className="app-header">
-          <h1>Case code ready</h1>
+          <h1>Case {hasFiles ? 'file' : 'code'} ready</h1>
           <p className="subtitle">
             {details.patientName} — {details.healixRef}
           </p>
         </header>
         <section className="form-section">
           <p className="field-note">
-            Send the code or link below to the escort ({details.escortName}) by email or message —
-            it is encrypted and unreadable without the PIN. Give them the PIN separately (e.g. by
-            phone). Nothing has been saved on this device.
+            Send the {hasFiles ? 'case file' : 'code or link'} below to the escort (
+            {details.escortName}) by email or message — it is encrypted and unreadable without the
+            PIN. Give them the PIN separately (e.g. by phone). Nothing has been saved on this
+            device.
           </p>
-          <div className="field">
-            <label className="field-label">Case code</label>
-            <textarea className="field-textarea code-input" rows={5} readOnly value={generated.code} />
-            <button className="btn btn-secondary" onClick={() => copy(generated.code, 'code')}>
-              {copied === 'code' ? 'Copied ✓' : 'Copy code'}
-            </button>
-          </div>
-          <div className="field">
-            <label className="field-label">Or a link that opens the app with the code filled in</label>
-            <button className="btn btn-secondary" onClick={() => copy(generated.link, 'link')}>
-              {copied === 'link' ? 'Copied ✓' : 'Copy link'}
-            </button>
-          </div>
-          <div className="field">
-            <label className="field-label">Or scan on the escort's device</label>
-            <img className="qr" src={generated.qr} alt="QR code for the case link" />
-          </div>
+          {hasFiles && (
+            <div className="field">
+              <label className="field-label">
+                Encrypted case file ({attachments.length} report{attachments.length > 1 ? 's' : ''}{' '}
+                included)
+              </label>
+              <button className="btn btn-primary" onClick={downloadCaseFile}>
+                Download {generated.fileName}
+              </button>
+              <div className="field-hint">
+                The escort chooses “Load case from code” → “Open case file” and enters the PIN.
+              </div>
+            </div>
+          )}
+          {!hasFiles && (
+            <>
+              <div className="field">
+                <label className="field-label">Case code</label>
+                <textarea
+                  className="field-textarea code-input"
+                  rows={5}
+                  readOnly
+                  value={generated.code}
+                />
+                <button className="btn btn-secondary" onClick={() => copy(generated.code, 'code')}>
+                  {copied === 'code' ? 'Copied ✓' : 'Copy code'}
+                </button>
+              </div>
+              <div className="field">
+                <label className="field-label">
+                  Or a link that opens the app with the code filled in
+                </label>
+                <button className="btn btn-secondary" onClick={() => copy(generated.link, 'link')}>
+                  {copied === 'link' ? 'Copied ✓' : 'Copy link'}
+                </button>
+              </div>
+              {generated.qr && (
+                <div className="field">
+                  <label className="field-label">Or scan on the escort's device</label>
+                  <img className="qr" src={generated.qr} alt="QR code for the case link" />
+                </div>
+              )}
+            </>
+          )}
         </section>
         <div className="header-actions">
           <button className="btn btn-secondary" onClick={() => setGenerated(null)}>
@@ -147,7 +237,7 @@ export default function SetupScreen({
       <form className="setup-form" onSubmit={(e) => e.preventDefault()}>
         <section className="form-section">
           <h2 className="section-title">Patient details</h2>
-          {FIELDS.map((f) => (
+          {[...REQUIRED_FIELDS, ...OPTIONAL_FIELDS].map((f) => (
             <div className="field" key={f.key}>
               <label className="field-label" htmlFor={f.key}>
                 {f.label}
@@ -162,6 +252,66 @@ export default function SetupScreen({
             </div>
           ))}
         </section>
+
+        <section className="form-section">
+          <h2 className="section-title">Clinical details (optional)</h2>
+          <p className="field-note">
+            These pre-fill the escort's assessment form; the escort can still edit them.
+          </p>
+          {CLINICAL_FIELDS.map((f) => (
+            <div className="field" key={f.key}>
+              <label className="field-label" htmlFor={`clin-${f.key}`}>
+                {f.label}
+              </label>
+              <textarea
+                id={`clin-${f.key}`}
+                className="field-textarea"
+                rows={f.key === 'medications' ? 4 : 2}
+                value={prefills[f.key] ?? ''}
+                onChange={(e) => setPrefills({ ...prefills, [f.key]: e.target.value })}
+              />
+              {f.hint && <div className="field-hint">{f.hint}</div>}
+            </div>
+          ))}
+        </section>
+
+        <section className="form-section">
+          <h2 className="section-title">Medical reports (optional)</h2>
+          <p className="field-note">
+            Attach reports already on the case (PDF or photos). They appear in the escort's
+            “Medical reports / Uploads” tab. With attachments, the case is handed over as an
+            encrypted file rather than a QR code.
+          </p>
+          <input
+            id="attachments"
+            type="file"
+            multiple
+            accept="application/pdf,image/*"
+            onChange={(e) => {
+              const list = Array.from(e.target.files ?? []);
+              if (list.length) setAttachments((prev) => [...prev, ...list]);
+              e.target.value = '';
+            }}
+          />
+          {attachments.length > 0 && (
+            <ul className="file-list">
+              {attachments.map((f, i) => (
+                <li key={i}>
+                  <span className="file-name">{f.name}</span>
+                  <span className="file-size">{(f.size / 1024).toFixed(0)} KB</span>
+                  <button
+                    type="button"
+                    className="btn btn-ghost btn-small"
+                    onClick={() => setAttachments(attachments.filter((_, j) => j !== i))}
+                  >
+                    Remove
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+
         <section className="form-section">
           <h2 className="section-title">Escort access PIN</h2>
           <p className="field-note">
