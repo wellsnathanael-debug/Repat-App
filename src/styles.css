@@ -1,19 +1,20 @@
-/* Healix brand styling — palette approximated from healix.com (deep forest
-   green, vibrant green accent, cream, soft orange highlight; pill buttons).
-   Refine hex codes / add brand font files when the brand book is supplied. */
+/* Healix brand styling — palette matched to the brand book pages supplied by
+   the user (core dark green, mid green, cream, light green tint). Exact
+   values to be confirmed against the official hex codes; brand font files
+   (WOFF2) still needed to replace the system stack. */
 
 :root {
-  --brand: #0e3b2e;
-  --brand-dark: #092a20;
-  --accent: #56c271;
-  --accent-soft: #e4f2e8;
+  --brand: #17362d;
+  --brand-dark: #0f2a22;
+  --accent: #55c374;
+  --accent-soft: #dcebd8;
   --orange: #e58a3a;
   --orange-soft: #fbe3cd;
-  --bg: #faf7f2;
+  --bg: #f0f3eb;
   --card: #ffffff;
-  --text: #1a2e26;
-  --muted: #5b6b62;
-  --border: #d8ded9;
+  --text: #1b3931;
+  --muted: #58685f;
+  --border: #d3ddd2;
   --danger: #b3261e;
   --radius: 14px;
 }
@@ -574,6 +575,23 @@ body {
 
 .file-icon {
   font-size: 28px;
+}
+
+/* Demo layer */
+.demo-row {
+  margin-bottom: 10px;
+}
+
+.demo-hint {
+  margin: 6px 0 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--orange);
+}
+
+.demo-link {
+  align-self: flex-start;
+  margin-top: 4px;
 }
 
 .placeholder-panel {

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import QRCode from 'qrcode';
 import { createCase, type CasePrefills, type CaseRecord, type FileInput } from '../db';
 import { blobToB64, caseLink, encryptCase, type CodeFile } from '../caseCode';
+import { DEMO_PIN, demoAttachment, demoDetails, demoPrefills } from '../demoData';
 
 // Completed by the repat desk when an escort is assigned a repatriation.
 // Two ways to hand the case to the escort:
@@ -71,6 +72,20 @@ export default function SetupScreen({
     fileName: string;
   } | null>(null);
   const [copied, setCopied] = useState('');
+  const [demoHint, setDemoHint] = useState('');
+
+  // Demo layer for presentations: fills the whole form with a clearly-fake
+  // patient (watermarked sample report included) so the desk-side flow can be
+  // shown without typing. The presenter proceeds exactly as the desk would.
+  const fillDemo = async () => {
+    setDetails({ ...demoDetails });
+    setPrefills({ ...demoPrefills });
+    setPin(DEMO_PIN);
+    setPinConfirm(DEMO_PIN);
+    const report = await demoAttachment();
+    setAttachments(report ? [new File([report.data], report.name, { type: report.type })] : []);
+    setDemoHint(`Demo data loaded — fictitious patient. Demo PIN: ${DEMO_PIN}`);
+  };
 
   const validate = (): boolean => {
     setError('');
@@ -237,6 +252,12 @@ export default function SetupScreen({
         </div>
       </header>
       <form className="setup-form" onSubmit={(e) => e.preventDefault()}>
+        <div className="demo-row">
+          <button type="button" className="btn btn-ghost btn-small" onClick={() => void fillDemo()}>
+            Fill with demo patient (fake data, for presentations)
+          </button>
+          {demoHint && <p className="demo-hint">{demoHint}</p>}
+        </div>
         <section className="form-section">
           <h2 className="section-title">Patient details</h2>
           {[...REQUIRED_FIELDS, ...OPTIONAL_FIELDS].map((f) => (

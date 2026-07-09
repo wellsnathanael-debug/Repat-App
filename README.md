@@ -51,6 +51,19 @@ file) and the **Handover letter** (clinical summary for the receiving hospital/G
 checklists). Styling follows the Healix brand (palette approximated from healix.com; refine via
 `src/styles.css` and `src/pdf/common.tsx` when the brand book is available).
 
+## Demonstrating the tool
+
+For presentations there is a demo layer with a clearly fictitious patient ("Samantha Example",
+ref DEMO-2026-0001, watermarked sample report, PIN **123456**):
+
+- **Two-device demo (desk → escort):** on the setup screen tap *"Fill with demo patient"* —
+  everything fills instantly, then proceed as the desk would: Generate case code → scan the QR
+  with the tablet → enter 123456 → the escort view appears with the clinical details pre-filled
+  and the sample report in Uploads.
+- **Single-device demo:** on the start screen tap *"Set up a demo case on this device"*.
+
+Demo actions are only available when no case is loaded, so they can never touch live case data.
+
 ## Development
 
 ```bash

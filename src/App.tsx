@@ -77,7 +77,13 @@ export default function App() {
     case 'loading':
       return <div className="loading">Loading…</div>;
     case 'start':
-      return <StartScreen onSetup={() => setScreen('setup')} onLoad={() => setScreen('load')} />;
+      return (
+        <StartScreen
+          onSetup={() => setScreen('setup')}
+          onLoad={() => setScreen('load')}
+          onDemo={(record) => void refresh(record)}
+        />
+      );
     case 'setup':
       return (
         <SetupScreen

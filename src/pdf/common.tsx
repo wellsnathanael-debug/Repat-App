@@ -3,15 +3,15 @@ import type { Answers, FieldDef, SectionDef } from '../schema/types';
 import { sectionNAKey } from '../schema/types';
 import { durationBetween, formatUkUtc } from '../time';
 
-// Healix palette (approximated from the brand site; refine when the brand
-// book is supplied): deep forest green, vibrant green accent, cream.
+// Healix palette matched to the supplied brand book pages (core dark green,
+// mid green, light tint). Confirm against official hex codes when available.
 export const BRAND = {
-  green: '#0E3B2E',
-  accent: '#56C271',
-  greenSoft: '#E4F2E8',
-  ink: '#1A2E26',
-  muted: '#5B6B62',
-  faint: '#B9C4BD',
+  green: '#17362D',
+  accent: '#55C374',
+  greenSoft: '#DCEBD8',
+  ink: '#1B3931',
+  muted: '#58685F',
+  faint: '#B7C4BA',
 };
 
 export const pdfStyles = StyleSheet.create({

@@ -376,6 +376,41 @@ await lockoutPage.waitForSelector('text=Too many incorrect attempts');
 check('Correct PIN also refused during lockout window', true);
 await lockoutContext.close();
 
+// ============ Part F: demo layer ============
+const demoContext = await browser.newContext({ viewport: { width: 1024, height: 1366 } });
+const demoPage = await demoContext.newPage();
+await demoPage.goto(BASE);
+// Setup-screen fill button
+await demoPage.click('.start-option:has-text("Set up a new case")');
+await demoPage.click('button:has-text("Fill with demo patient")');
+await demoPage.waitForSelector('text=Demo PIN: 123456');
+const demoName = await demoPage.locator('#patientName').inputValue();
+const demoDiag = await demoPage.locator('#clin-diagnosis').inputValue();
+const demoFiles = await demoPage.textContent('.file-list');
+check(
+  'Demo fill populates setup with fake patient, clinicals and sample report',
+  demoName === 'Samantha Example' && demoDiag.includes('femur') && demoFiles.includes('Sample-discharge-report'),
+);
+await demoPage.click('button:has-text("Back")');
+// Start-screen one-tap demo case
+demoPage.on('dialog', (d) => void d.accept());
+await demoPage.click('button:has-text("Set up a demo case on this device")');
+await demoPage.waitForSelector('.patient-banner');
+const demoBanner = await demoPage.textContent('.patient-banner');
+await demoPage.click('.tab:has-text("Medical reports / Uploads")');
+await demoPage.waitForSelector('.file-list');
+const demoUploads = await demoPage.textContent('.file-list');
+check(
+  'One-tap demo case lands on escort view with sample report',
+  demoBanner.includes('Samantha Example') && demoBanner.includes('DEMO-2026-0001') && demoUploads.includes('Sample-discharge-report'),
+);
+const demoDiagField = await demoPage
+  .locator('.tab:has-text("Pre-repat assessment")')
+  .click()
+  .then(() => demoPage.locator('section:has(h2:text-is("Diagnosis")) textarea').inputValue());
+check('Demo clinical details pre-fill the assessment', demoDiagField.includes('femur'));
+await demoContext.close();
+
 // ============ Part E: auto-lock after inactivity ============
 const autoContext = await browser.newContext({ viewport: { width: 1024, height: 1366 } });
 await autoContext.addInitScript(() => localStorage.setItem('repat-autolock-s', '2'));
