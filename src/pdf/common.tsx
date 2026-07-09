@@ -1,7 +1,21 @@
-import { StyleSheet, Text, View } from '@react-pdf/renderer';
+import { Font, StyleSheet, Text, View } from '@react-pdf/renderer';
 import type { Answers, FieldDef, SectionDef } from '../schema/types';
 import { sectionNAKey } from '../schema/types';
 import { durationBetween, formatUkUtc } from '../time';
+import interRegular from '@fontsource/inter/files/inter-latin-400-normal.woff?url';
+import interItalic from '@fontsource/inter/files/inter-latin-400-italic.woff?url';
+import interBold from '@fontsource/inter/files/inter-latin-700-normal.woff?url';
+
+// Inter is the brand-sanctioned replacement for Neue Montreal in documents;
+// swap these registrations for the Neue Montreal files when supplied.
+Font.register({
+  family: 'Inter',
+  fonts: [
+    { src: interRegular },
+    { src: interItalic, fontStyle: 'italic' },
+    { src: interBold, fontWeight: 700 },
+  ],
+});
 
 // Healix palette matched to the supplied brand book pages (core dark green,
 // mid green, light tint). Confirm against official hex codes when available.
@@ -15,16 +29,16 @@ export const BRAND = {
 };
 
 export const pdfStyles = StyleSheet.create({
-  page: { padding: 36, fontSize: 9, fontFamily: 'Helvetica', color: BRAND.ink },
+  page: { padding: 36, fontSize: 9, fontFamily: 'Inter', color: BRAND.ink },
   brandBar: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'baseline',
     marginBottom: 6,
   },
-  wordmark: { fontSize: 16, fontFamily: 'Helvetica-Bold', color: BRAND.green },
+  wordmark: { fontSize: 16, fontFamily: 'Inter', fontWeight: 700, color: BRAND.green },
   wordmarkSub: { fontSize: 8, color: BRAND.muted },
-  docTitle: { fontSize: 13, fontFamily: 'Helvetica-Bold', marginBottom: 2, color: BRAND.green },
+  docTitle: { fontSize: 13, fontFamily: 'Inter', fontWeight: 700, marginBottom: 2, color: BRAND.green },
   docSubtitle: { fontSize: 9, color: BRAND.muted, marginBottom: 10 },
   headerBox: {
     borderWidth: 1,
@@ -36,12 +50,12 @@ export const pdfStyles = StyleSheet.create({
     flexWrap: 'wrap',
   },
   headerItem: { width: '33.3%', marginBottom: 4, paddingRight: 6 },
-  headerLabel: { fontSize: 7, color: BRAND.green, fontFamily: 'Helvetica-Bold' },
+  headerLabel: { fontSize: 7, color: BRAND.green, fontFamily: 'Inter', fontWeight: 700 },
   headerValue: { fontSize: 9 },
   section: { marginBottom: 8 },
   sectionTitle: {
     fontSize: 10,
-    fontFamily: 'Helvetica-Bold',
+    fontFamily: 'Inter', fontWeight: 700,
     backgroundColor: BRAND.greenSoft,
     color: BRAND.green,
     padding: 4,
@@ -49,7 +63,7 @@ export const pdfStyles = StyleSheet.create({
   },
   sectionTitleMajor: {
     fontSize: 12,
-    fontFamily: 'Helvetica-Bold',
+    fontFamily: 'Inter', fontWeight: 700,
     backgroundColor: BRAND.green,
     color: '#ffffff',
     padding: 5,
@@ -57,7 +71,7 @@ export const pdfStyles = StyleSheet.create({
   },
   sectionNA: { fontStyle: 'italic', color: BRAND.muted, paddingLeft: 4, marginBottom: 4 },
   fieldRow: { flexDirection: 'row', marginBottom: 3, paddingLeft: 4 },
-  fieldLabel: { width: '42%', fontFamily: 'Helvetica-Bold', paddingRight: 6 },
+  fieldLabel: { width: '42%', fontFamily: 'Inter', fontWeight: 700, paddingRight: 6 },
   fieldValue: { width: '58%' },
   note: { fontStyle: 'italic', color: BRAND.muted, marginBottom: 4, paddingLeft: 4 },
   naValue: { color: BRAND.muted },
@@ -65,7 +79,7 @@ export const pdfStyles = StyleSheet.create({
   table: { marginLeft: 4, marginBottom: 4, borderWidth: 0.5, borderColor: BRAND.faint },
   tableHead: { flexDirection: 'row', backgroundColor: BRAND.greenSoft },
   tableRow: { flexDirection: 'row', borderTopWidth: 0.5, borderTopColor: BRAND.faint },
-  th: { fontFamily: 'Helvetica-Bold', fontSize: 7.5, padding: 3, color: BRAND.green },
+  th: { fontFamily: 'Inter', fontWeight: 700, fontSize: 7.5, padding: 3, color: BRAND.green },
   td: { fontSize: 8, padding: 3 },
   footer: {
     position: 'absolute',
