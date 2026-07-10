@@ -3,6 +3,7 @@ import type { CaseRecord } from '../db';
 import { tabs } from '../schema/preRepatAssessment';
 import FormRenderer from '../components/FormRenderer';
 import UploadsTab from './UploadsTab';
+import MissionTab from './MissionTab';
 
 export default function MainScreen({
   caseRecord,
@@ -84,6 +85,8 @@ export default function MainScreen({
           </div>
         ) : activeTab.custom === 'uploads' ? (
           <UploadsTab />
+        ) : activeTab.custom === 'mission' ? (
+          <MissionTab caseRecord={caseRecord} />
         ) : (
           <FormRenderer tab={activeTab} caseRecord={caseRecord} />
         )}

@@ -58,6 +58,7 @@ export default function LoadCaseScreen({
       data: b64ToBlob(f.dataB64, f.type),
       addedBy: 'desk' as const,
       addedAt: new Date().toISOString(),
+      category: f.category ?? ('report' as const),
     }));
     // Transfer files carry the full answers dump; desk case files carry
     // prefills — createCase handles both.

@@ -238,6 +238,7 @@ export const preRepatAssessment: TabDef = {
 };
 
 export const tabs: TabDef[] = [
+  { id: 'mission', title: 'Mission details', custom: 'mission', sections: [] },
   preRepatAssessment,
   repatRecord,
   handover,

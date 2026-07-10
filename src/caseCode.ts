@@ -20,6 +20,7 @@ export interface CodeFile {
   name: string;
   type: string;
   dataB64: string;
+  category?: 'report' | 'travel';
 }
 
 export interface CasePayload {

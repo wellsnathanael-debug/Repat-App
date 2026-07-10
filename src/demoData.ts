@@ -16,9 +16,16 @@ export const demoDetails: CaseDetails = {
   escortName: 'Demo Escort RN',
   email: 'demo.patient@example.com',
   hospitalName: "St Example's Hospital, Winchester",
+  escortEmail: 'demo.escort@example.com',
+  flightItinerary:
+    '11 Jul  EZY2204  LGW → ALC  dep 07:15 arr 10:50 (escort positioning)\n' +
+    '12 Jul  BA423   ALC → LHR  dep 10:35 arr 12:20 (with patient — row 1, aisle+window)',
+  hotelDetails:
+    'Hotel Ejemplo, Av. de la Muestra 22, Alicante · booking ref DEMO-HTL-4471 · check-in 11 Jul, check-out 12 Jul',
 };
 
 export const demoPrefills: CasePrefills = {
+  patientLocation: 'Clínica Ejemplo, Alicante — Ward 4, Room 12',
   diagnosis:
     'Fractured right neck of femur following a fall on 28/06/2026; right total hip replacement 30/06/2026 (uncemented). Post-op day 9.',
   historyTreatment:
@@ -41,6 +48,7 @@ export async function demoAttachment(): Promise<FileInput | null> {
       data: await resp.blob(),
       addedBy: 'desk',
       addedAt: new Date().toISOString(),
+      category: 'report',
     };
   } catch {
     return null;

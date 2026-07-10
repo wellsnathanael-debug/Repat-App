@@ -31,6 +31,11 @@ export interface CaseRecord {
   email: string;
   /** Destination hospital name, if known at setup (optional). */
   hospitalName: string;
+  /** Escort's email — used to send them the case code (optional). */
+  escortEmail: string;
+  /** Escort travel details shown on the Mission details tab (optional). */
+  flightItinerary: string;
+  hotelDetails: string;
   createdAt: string;
 }
 
@@ -43,6 +48,7 @@ export interface CasePrefills {
   allergies?: string;
   pastMedicalHistory?: string;
   medications?: string;
+  patientLocation?: string;
 }
 
 export interface FileInput {
@@ -51,6 +57,8 @@ export interface FileInput {
   data: Blob;
   addedBy: 'desk' | 'escort';
   addedAt: string;
+  /** Medical report vs escort travel document (itinerary, hotel booking…). */
+  category: 'report' | 'travel';
 }
 
 export interface FileRecord extends FileInput {
@@ -159,7 +167,15 @@ export async function unlockWithPin(pin: string): Promise<UnlockResult> {
   try {
     const row = await db.cases.get(1);
     if (!row) throw new Error('missing case row');
-    const caseRecord = await decryptJson<CaseRecord>(row);
+    // Spread defaults first: cases created by older app versions lack the
+    // newer optional fields.
+    const decrypted = await decryptJson<Partial<CaseRecord>>(row);
+    const caseRecord = {
+      escortEmail: '',
+      flightItinerary: '',
+      hotelDetails: '',
+      ...decrypted,
+    } as CaseRecord;
     await db.meta.put({ ...meta, failedAttempts: 0, lockUntil: 0 });
     return { ok: true, caseRecord };
   } catch {
@@ -187,6 +203,9 @@ async function migrateLegacy(legacy: LegacyCaseRow, pin: string): Promise<CaseRe
     escortName: legacy.escortName ?? '',
     email: legacy.email ?? '',
     hospitalName: legacy.hospitalName ?? '',
+    escortEmail: legacy.escortEmail ?? '',
+    flightItinerary: legacy.flightItinerary ?? '',
+    hotelDetails: legacy.hotelDetails ?? '',
     createdAt: legacy.createdAt ?? new Date().toISOString(),
   };
   const salt = newSalt();
@@ -216,6 +235,7 @@ async function migrateLegacy(legacy: LegacyCaseRow, pin: string): Promise<CaseRe
             data: row.data,
             addedBy: row.addedBy ?? 'desk',
             addedAt: row.addedAt ?? new Date().toISOString(),
+            category: row.category ?? 'report',
           })),
         });
       }
@@ -245,6 +265,7 @@ const PREFILL_FIELD_IDS: Record<keyof CasePrefills, string> = {
   allergies: 'allergies',
   pastMedicalHistory: 'pastMedicalHistory',
   medications: 'medsList',
+  patientLocation: 'patientLocation',
 };
 
 // Files are stored as one encrypted JSON header (name/type/metadata) plus the
@@ -254,6 +275,7 @@ interface FileHeader {
   type: string;
   addedBy: 'desk' | 'escort';
   addedAt: string;
+  category?: 'report' | 'travel';
 }
 
 async function encryptFilePayload(file: FileInput): Promise<Omit<EncFileRow, 'id'>> {
@@ -262,6 +284,7 @@ async function encryptFilePayload(file: FileInput): Promise<Omit<EncFileRow, 'id
     type: file.type,
     addedBy: file.addedBy,
     addedAt: file.addedAt,
+    category: file.category,
   });
   const body = await encryptBytes(await file.data.arrayBuffer());
   return { iv: body.iv, ct: body.ct, header };
@@ -340,7 +363,12 @@ export async function listFiles(): Promise<FileRecord[]> {
   for (const row of rows) {
     const header = await decryptJson<FileHeader>(row.header);
     const bytes = await decryptBytes({ iv: row.iv, ct: row.ct });
-    out.push({ id: row.id!, ...header, data: new Blob([bytes], { type: header.type }) });
+    out.push({
+      id: row.id!,
+      ...header,
+      category: header.category ?? 'report',
+      data: new Blob([bytes], { type: header.type }),
+    });
   }
   return out;
 }

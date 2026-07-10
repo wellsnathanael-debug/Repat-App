@@ -444,6 +444,19 @@ body {
   cursor: default;
 }
 
+a.btn-link {
+  display: inline-block;
+  text-decoration: none;
+  text-align: center;
+}
+
+.mission-text {
+  white-space: pre-wrap;
+  font-size: 15px;
+  line-height: 1.6;
+  margin: 0;
+}
+
 /* Setup / lock */
 .setup-form,
 .lock-form {

@@ -37,12 +37,29 @@ await page.fill('#hospitalName', 'Bristol Royal Infirmary');
 await page.fill('#clin-diagnosis', 'Left total hip replacement following fall; post-op day 9.');
 await page.fill('#clin-allergies', 'Penicillin — rash.');
 await page.fill('#clin-medications', 'Apixaban 5 mg PO BD\nCo-codamol 30/500 PO QDS PRN');
+await page.fill('#clin-patientLocation', 'Clínica Ejemplo, Alicante — Ward 4');
+// Escort travel details; mismatched emails must be rejected
+await page.fill('#escortEmail', 'escort@example.org');
+await page.fill('#escortEmailConfirm', 'escrot@example.org');
+await page.fill('#flightItinerary', '12 Jul BA423 ALC-LHR dep 10:35');
+await page.fill('#hotelDetails', 'Hotel Ejemplo, Alicante, ref HTL-1');
 await page.fill('#pin', '482137');
 await page.fill('#pinConfirm', '482137');
+await page.click('button:has-text("Save case on this device")');
+await page.waitForSelector('text=do not match');
+check('Mismatched escort emails rejected', true);
+await page.fill('#escortEmailConfirm', 'escort@example.org');
 await page.screenshot({ path: `${SHOT}/1-setup.png`, fullPage: true });
 await page.click('button:has-text("Save case on this device")');
 
 await page.waitForSelector('.patient-banner');
+// Mission details tab is the landing tab: itinerary + hotel visible
+const missionText = await page.textContent('.tab-content');
+check(
+  'Mission details tab shows itinerary and hotel',
+  missionText.includes('BA423') && missionText.includes('Hotel Ejemplo'),
+);
+await page.click('.tab:has-text("Pre-repat assessment")');
 const banner = await page.textContent('.patient-banner');
 check('Patient details auto-populate banner', banner.includes('Jane Elizabeth Doe') && banner.includes('HLX-2026-04821'));
 
@@ -70,7 +87,10 @@ const idbDump = await page.evaluate(async () => {
 });
 check(
   'No plaintext patient data at rest in IndexedDB',
-  !idbDump.includes('Jane') && !idbDump.includes('Harbour Road') && !idbDump.includes('Apixaban'),
+  !idbDump.includes('Jane') &&
+    !idbDump.includes('Harbour Road') &&
+    !idbDump.includes('Apixaban') &&
+    !idbDump.includes('BA423'),
 );
 
 // Lock / unlock round-trip
@@ -89,8 +109,13 @@ await page.fill('#unlock-pin', '482137');
 await page.click('button:has-text("Unlock")');
 await page.waitForSelector('.patient-banner');
 check('Correct PIN unlocks (decryption-verified)', true);
+await page.click('.tab:has-text("Pre-repat assessment")');
 
 // Desk pre-fill appears in the assessment tab
+const locPrefill = await page
+  .locator('section:has(h2:text-is("Patient location")) textarea')
+  .inputValue();
+check('Patient location entered by the desk pre-fills the assessment', locPrefill.includes('Ward 4'));
 const diagPrefill = await page.locator('section:has(h2:text-is("Diagnosis")) textarea').inputValue();
 const medsPrefill = await page
   .locator('section:has(h2:text-is("Medications list (Drug name/route/dosage/frequency)")) .field:has(label:text-is("Medications list")) textarea')
@@ -250,17 +275,29 @@ await page.fill('#paxMobile', '+44 7700 900456');
 await page.fill('#healixRef', 'HLX-2026-05512');
 await page.fill('#escortName', 'A. Escort RN');
 await page.fill('#clin-diagnosis', 'STEMI, primary PCI to LAD.');
+await page.fill('#escortEmail', 'escort2@example.org');
+await page.fill('#escortEmailConfirm', 'escort2@example.org');
+await page.fill('#flightItinerary', '14 Jul VY1240 ALC-BCN dep 09:10');
 await page.fill('#pin', '731905');
 await page.fill('#pinConfirm', '731905');
-// Attach a small "report" (1x1 PNG)
+// Attach a small "report" (1x1 PNG) and a travel document
 const pngBytes = Buffer.from(
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==',
   'base64',
 );
 writeFileSync(`${SHOT}/angiogram-report.png`, pngBytes);
+writeFileSync(`${SHOT}/flight-booking.png`, pngBytes);
 await page.setInputFiles('#attachments', `${SHOT}/angiogram-report.png`);
+await page.setInputFiles('#travel-docs', `${SHOT}/flight-booking.png`);
 await page.click('button:has-text("Generate case code for escort")');
 await page.waitForSelector('text=Case file ready');
+
+// Email-to-escort: mailto pre-filled with the address, never containing the PIN
+const mailHref = (await page.getAttribute('[data-testid="email-escort"]', 'href')) ?? '';
+check(
+  'Email-to-escort mailto is pre-filled and excludes the PIN',
+  mailHref.startsWith('mailto:escort2%40example.org') && !mailHref.includes('731905'),
+);
 dl = page.waitForEvent('download', { timeout: 30000 });
 await page.click('button:has-text("Download Repat_")');
 const caseFile = await dl;
@@ -304,6 +341,14 @@ check(
   'Escort loads case file with PIN; details auto-populate',
   escortBanner.includes('Robert Smith') && escortBanner.includes('HLX-2026-05512'),
 );
+// Landing tab is Mission details: itinerary + travel document visible
+await escortPage.waitForSelector('h2:text-is("Travel documents")');
+const escortMission = await escortPage.textContent('.tab-content');
+check(
+  'Mission details tab shows itinerary and travel document on the escort device',
+  escortMission.includes('VY1240') && escortMission.includes('flight-booking.png'),
+);
+await escortPage.click('.tab:has-text("Pre-repat assessment")');
 const escortDiag = await escortPage.locator('section:has(h2:text-is("Diagnosis")) textarea').inputValue();
 check('Clinical pre-fill travels inside the case file', escortDiag.includes('STEMI'));
 await escortPage.click('.tab:has-text("Medical reports / Uploads")');

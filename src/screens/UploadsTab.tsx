@@ -21,6 +21,7 @@ export default function UploadsTab() {
         data: f,
         addedBy: 'escort',
         addedAt: new Date().toISOString(),
+        category: 'report',
       });
     }
     void refresh();
@@ -53,11 +54,13 @@ export default function UploadsTab() {
             e.target.value = '';
           }}
         />
-        {files.length === 0 ? (
+        {files.filter((f) => f.category !== 'travel').length === 0 ? (
           <p className="field-hint">No reports on this case yet.</p>
         ) : (
           <ul className="file-list">
-            {files.map((f) => (
+            {files
+              .filter((f) => f.category !== 'travel')
+              .map((f) => (
               <li key={f.id}>
                 {f.type.startsWith('image/') ? (
                   <img
@@ -91,6 +94,9 @@ export default function UploadsTab() {
             ))}
           </ul>
         )}
+        <p className="field-hint">
+          Travel documents (itineraries, bookings) are on the “Mission details” tab.
+        </p>
       </section>
     </div>
   );

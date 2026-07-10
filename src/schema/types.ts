@@ -62,7 +62,7 @@ export interface TabDef {
   /** Placeholder tabs render a "coming soon" panel instead of sections. */
   placeholder?: boolean;
   /** Custom-rendered tabs (e.g. uploads) handled outside the form engine. */
-  custom?: 'uploads';
+  custom?: 'uploads' | 'mission';
   sections: SectionDef[];
 }
 
