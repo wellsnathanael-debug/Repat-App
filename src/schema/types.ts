@@ -12,6 +12,7 @@ export type FieldType =
   | 'repeat'
   | 'lmwh'
   | 'transportTime'
+  | 'deskSummary'
   | 'note';
 
 export type RepeatColumnKind = 'text' | 'timestamp' | 'drug';

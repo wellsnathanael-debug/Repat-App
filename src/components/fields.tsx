@@ -396,3 +396,79 @@ export function TransportTimeField({
 export function NoteField({ field }: { field: FieldDef }) {
   return <p className="field-note">{field.text}</p>;
 }
+
+/** "Share summary with repat desk" — turns the desk-confirmation answers
+ *  into a compact message and hands it to the share sheet (clipboard
+ *  fallback). No PIN and no wider clinical content — just the confirmation
+ *  items the desk is waiting on. */
+export function DeskSummaryField({
+  answers,
+  healixRef,
+  escortName,
+}: {
+  answers: Record<string, FieldValue>;
+  healixRef: string;
+  escortName: string;
+}) {
+  const [message, setMessage] = useState('');
+
+  const choice = (id: string, map: Record<string, string>) =>
+    map[answers[id]?.choice ?? ''] ?? 'not yet recorded';
+  const text = (id: string) =>
+    answers[id]?.na ? 'N/A' : answers[id]?.text?.trim() || 'not yet recorded';
+
+  const buildSummary = () => {
+    const transport = { car: 'Car', mpv: 'Large MPV needed', ambulance: 'Ambulance' };
+    const lines = [
+      `Repat confirmation — case ${healixRef} (escort: ${escortName})`,
+      '',
+      `Fit to fly as planned: ${choice('ftf', { yes: 'Yes', no: 'No' })}`,
+    ];
+    const ftfDetails = text('ftfDetails');
+    if (ftfDetails !== 'not yet recorded' && ftfDetails !== 'N/A') {
+      lines.push(`FTF details: ${ftfDetails}`);
+    }
+    lines.push(
+      `Ground transport overseas: ${choice('transportOverseas', transport)}`,
+      `Ground transport at destination: ${choice('transportDestination', transport)}`,
+      `Luggage: ${text('luggage')}`,
+      `Overseas ground transport: ${choice('overseasTransportBy', {
+        escort: 'escort will arrange',
+        desk: 'repat desk to arrange',
+      })}`,
+      `Destination confirmed: ${choice('destinationConfirmed', { home: 'Home', hospital: 'Hospital' })}`,
+    );
+    if (answers['destinationConfirmed']?.choice === 'hospital') {
+      lines.push(`Rationale for admission: ${text('admissionRationale')}`);
+    }
+    const additional = text('deskConfirmAdditional');
+    if (additional !== 'not yet recorded' && additional !== 'N/A') {
+      lines.push(`Additional: ${additional}`);
+    }
+    return lines.join('\n');
+  };
+
+  const share = async () => {
+    const summary = buildSummary();
+    try {
+      if (navigator.share) {
+        await navigator.share({ text: summary });
+        setMessage('Summary shared.');
+        return;
+      }
+    } catch (err) {
+      if ((err as DOMException)?.name === 'AbortError') return;
+    }
+    await navigator.clipboard.writeText(summary);
+    setMessage('Summary copied to clipboard — paste it into your message to the repat desk.');
+  };
+
+  return (
+    <div className="field">
+      <button type="button" className="btn btn-primary" onClick={() => void share()}>
+        Share summary with repat desk
+      </button>
+      {message && <p className="export-message">{message}</p>}
+    </div>
+  );
+}

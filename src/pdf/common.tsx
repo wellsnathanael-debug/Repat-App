@@ -171,6 +171,7 @@ export function FieldLine({
   if (field.type === 'note') return <Text style={pdfStyles.note}>{field.text}</Text>;
   if (field.type === 'repeat') return <RepeatTable field={field} answers={answers} />;
   if (field.type === 'lmwh') return <LmwhBlock field={field} answers={answers} />;
+  if (field.type === 'deskSummary') return null; // on-screen share button only
 
   const value = answers[field.id] ?? {};
   let rendered;

@@ -6,6 +6,7 @@ import { kitBagMedications } from '../schema/kitBag';
 import {
   ChoiceField,
   DateTimeField,
+  DeskSummaryField,
   LmwhField,
   NoteField,
   RepeatField,
@@ -156,6 +157,15 @@ export default function FormRenderer({
                       key={field.id}
                       field={field}
                       arrivalIso={answers['arrivalDateTime']?.iso}
+                    />
+                  );
+                case 'deskSummary':
+                  return (
+                    <DeskSummaryField
+                      key={field.id}
+                      answers={answers}
+                      healixRef={caseRecord.healixRef}
+                      escortName={caseRecord.escortName}
                     />
                   );
               }

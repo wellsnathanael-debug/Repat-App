@@ -147,6 +147,40 @@ check(
   await admitted.locator('button:text-is("Yes")').first().isDisabled(),
 );
 
+// Post-assessment confirmation to repat desk
+const deskConfirm = page.locator('section:has(h2:has-text("Post-assessment confirmation"))');
+await deskConfirm.locator('.field:has(label:has-text("Fit to fly")) button:text-is("Yes")').click();
+await deskConfirm
+  .locator('.field:has(label:has-text("overseas (to airport)")) button:text-is("Ambulance")')
+  .click();
+await deskConfirm
+  .locator('.field:has(label:has-text("at destination (from airport)")) button:text-is("Car")')
+  .click();
+await deskConfirm.locator('.field:has(label:has-text("How much luggage")) textarea').fill('2 large cases + 1 cabin bag');
+await deskConfirm
+  .locator('.field:has(label:has-text("Who arranges")) button:has-text("Repat desk")')
+  .click();
+await deskConfirm
+  .locator('.field:has(label:has-text("destination confirmed")) button:text-is("Hospital")')
+  .click();
+await deskConfirm
+  .locator('.field:has(label:has-text("rationale for admission")) textarea')
+  .fill('Needs ongoing IV antibiotics and physio; not safe for home yet.');
+await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+await deskConfirm.locator('button:has-text("Share summary with repat desk")').click();
+await page.waitForSelector('text=copied to clipboard');
+const summary = await page.evaluate(() => navigator.clipboard.readText());
+check(
+  'Desk confirmation summary shares FTF, transport, destination and rationale',
+  summary.includes('HLX-2026-04821') &&
+    summary.includes('Fit to fly as planned: Yes') &&
+    summary.includes('overseas: Ambulance') &&
+    summary.includes('at destination: Car') &&
+    summary.includes('repat desk to arrange') &&
+    summary.includes('Destination confirmed: Hospital') &&
+    summary.includes('IV antibiotics'),
+);
+
 // ============ Repat record tab ============
 await page.click('.tab:has-text("Repat record")');
 await page.waitForSelector('h2:text-is("Start of repat")');

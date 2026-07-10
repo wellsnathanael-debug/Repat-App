@@ -234,6 +234,77 @@ export const preRepatAssessment: TabDef = {
       title: 'Any additional relevant information',
       fields: [{ id: 'anyAdditional', type: 'textWithNA' }],
     },
+    {
+      id: 'desk-confirmation',
+      title: 'Post-assessment confirmation to repat desk',
+      fields: [
+        {
+          id: 'note-desk-confirm',
+          type: 'note',
+          text:
+            'Contact the repatriation desk after completing this assessment to confirm the ' +
+            'following outstanding arrangements. “Share summary” below sends your answers in ' +
+            'writing via your usual channel.',
+        },
+        {
+          id: 'ftf',
+          type: 'choice',
+          label: 'Fit to fly (FTF) as planned',
+          options: [
+            { key: 'yes', label: 'Yes' },
+            { key: 'no', label: 'No' },
+          ],
+        },
+        { id: 'ftfDetails', type: 'textWithNA', label: 'If not fit to fly as planned, details' },
+        {
+          id: 'transportOverseas',
+          type: 'choice',
+          label: 'Ground transport overseas (to airport)',
+          options: [
+            { key: 'car', label: 'Car' },
+            { key: 'mpv', label: 'Large MPV needed' },
+            { key: 'ambulance', label: 'Ambulance' },
+          ],
+        },
+        {
+          id: 'transportDestination',
+          type: 'choice',
+          label: 'Ground transport at destination (from airport)',
+          options: [
+            { key: 'car', label: 'Car' },
+            { key: 'mpv', label: 'Large MPV needed' },
+            { key: 'ambulance', label: 'Ambulance' },
+          ],
+        },
+        { id: 'luggage', type: 'text', label: 'How much luggage (patient + companions)' },
+        {
+          id: 'overseasTransportBy',
+          type: 'choice',
+          label: 'Who arranges the overseas ground transport?',
+          options: [
+            { key: 'escort', label: 'Escort will arrange' },
+            { key: 'desk', label: 'Repat desk to arrange' },
+          ],
+        },
+        {
+          id: 'destinationConfirmed',
+          type: 'choice',
+          label: "Patient's destination confirmed",
+          options: [
+            { key: 'home', label: 'Home' },
+            { key: 'hospital', label: 'Hospital' },
+          ],
+        },
+        {
+          id: 'admissionRationale',
+          type: 'textWithNA',
+          label:
+            'If hospital — rationale for admission (the repat desk needs this to arrange the admission)',
+        },
+        { id: 'deskConfirmAdditional', type: 'textWithNA', label: 'Additional information' },
+        { id: 'deskSummary', type: 'deskSummary' },
+      ],
+    },
   ],
 };
 
