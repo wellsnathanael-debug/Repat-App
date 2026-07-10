@@ -1,5 +1,8 @@
 import { chromium } from 'playwright-core';
-import { copyFileSync, writeFileSync } from 'node:fs';
+import { copyFileSync, mkdtempSync, writeFileSync } from 'node:fs';
+import { spawn } from 'node:child_process';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
 const SHOT = process.env.SHOT_DIR ?? '.';
 const BASE = 'http://localhost:4173/Repat-App/';
@@ -254,6 +257,12 @@ await page.screenshot({ path: `${SHOT}/3-handover.png`, fullPage: true });
 // ============ Dual PDF export ============
 await page.click('button:has-text("Export / Finish")');
 await page.waitForSelector('text=Export & finish');
+// On plain static hosting there is no case repository — the submit section must be hidden.
+await page.waitForTimeout(500);
+check(
+  'Repository submission hidden when no repository is hosted',
+  !(await page.isVisible('text=Submit to desk repository')),
+);
 let dl = page.waitForEvent('download', { timeout: 30000 });
 await page.click('button:has-text("Full repat record (desk)")');
 const fullPdf = await dl;
@@ -509,6 +518,83 @@ await autoPage.waitForSelector('.patient-banner');
 await autoPage.waitForSelector('#unlock-pin', { timeout: 10000 });
 check('Auto-lock engages after inactivity', true);
 await autoContext.close();
+
+// ============ Part G: case repository server (Docker deployment path) ============
+const repoData = mkdtempSync(join(tmpdir(), 'repat-repo-'));
+const DESK_TOKEN = 'test-desk-token';
+const repoProc = spawn('node', ['server/repo-server.mjs'], {
+  env: { ...process.env, PORT: '4180', DESK_TOKEN, DATA_DIR: repoData, DIST_DIR: 'dist' },
+  stdio: 'inherit',
+});
+for (let i = 0; i < 40; i++) {
+  try {
+    const r = await fetch('http://localhost:4180/api/health');
+    if (r.ok) break;
+  } catch {}
+  await new Promise((r) => setTimeout(r, 250));
+}
+
+const repoContext = await browser.newContext({ viewport: { width: 1024, height: 1366 } });
+const repoPage = await repoContext.newPage();
+await repoPage.goto('http://localhost:4180/Repat-App/');
+await repoPage.click('.start-option:has-text("Set up a new case")');
+await repoPage.fill('#patientName', 'Repo Test Patient');
+await repoPage.fill('#dob', '1970-05-05');
+await repoPage.fill('#homeAddress', '9 Repo Road');
+await repoPage.fill('#paxMobile', '3');
+await repoPage.fill('#healixRef', 'HLX-REPO-1');
+await repoPage.fill('#escortName', 'R. Escort');
+await repoPage.fill('#pin', '482137');
+await repoPage.fill('#pinConfirm', '482137');
+await repoPage.click('button:has-text("Save case on this device")');
+await repoPage.waitForSelector('.patient-banner');
+
+// Online/offline indicator
+check('Online badge shows Online', (await repoPage.textContent('[data-testid="online-badge"]')) === 'Online');
+await repoContext.setOffline(true);
+await repoPage.waitForSelector('[data-testid="online-badge"]:has-text("Offline")');
+check('Badge flips to Offline when connection is lost', true);
+await repoContext.setOffline(false);
+await repoPage.waitForSelector('[data-testid="online-badge"]:has-text("Online")');
+
+// Complete the mandatory LMWH, then submit to the repository.
+await repoPage.click('.tab:has-text("Repat record")');
+const repoLmwh = repoPage.locator('section:has(h2:has-text("Low molecular weight heparin"))');
+await repoLmwh.locator('button:text-is("No")').click();
+await repoLmwh.locator('.field:has(label:has-text("Reason LMWH not given")) textarea').fill('Short ambulant transfer.');
+await repoPage.click('button:has-text("Export / Finish")');
+await repoPage.waitForSelector('[data-testid="submit-repo"]');
+check('Repository submission offered when the repository is hosted', true);
+await repoPage.click('[data-testid="submit-repo"]');
+await repoPage.waitForSelector('text=Submitted to the desk repository', { timeout: 60000 });
+check('Case submitted to the repository', true);
+
+// Server side: auth required, then the submission is there with a real PDF.
+const unauth = await fetch('http://localhost:4180/api/submissions');
+check('Repository list requires the desk token', unauth.status === 401);
+const auth = { Authorization: `Basic ${Buffer.from(`desk:${DESK_TOKEN}`).toString('base64')}` };
+const list = await (await fetch('http://localhost:4180/api/submissions', { headers: auth })).json();
+check(
+  'Submission stored with case details',
+  list.submissions.length === 1 && list.submissions[0].caseRef === 'HLX-REPO-1' && list.submissions[0].fullPdfBytes > 1000,
+);
+const pdfBytes = Buffer.from(
+  await (await fetch(`http://localhost:4180/api/submissions/${list.submissions[0].id}/full.pdf`, { headers: auth })).arrayBuffer(),
+);
+check('Stored full-record PDF downloads and is a PDF', pdfBytes.subarray(0, 4).toString() === '%PDF');
+
+// Offline queueing: submit with no connection, then reconnect → auto-flush.
+await repoContext.setOffline(true);
+await repoPage.click('[data-testid="submit-repo"]');
+await repoPage.waitForSelector('text=submission queued on this device');
+check('Offline submission queues on the device', true);
+await repoContext.setOffline(false);
+await repoPage.waitForSelector('text=queued submission sent to the desk repository', { timeout: 30000 });
+const list2 = await (await fetch('http://localhost:4180/api/submissions', { headers: auth })).json();
+check('Queued submission auto-sends when back online', list2.submissions.length === 2);
+
+await repoContext.close();
+repoProc.kill();
 
 await browser.close();
 console.log(results.join('\n'));

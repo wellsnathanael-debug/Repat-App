@@ -4,6 +4,7 @@ import { tabs } from '../schema/preRepatAssessment';
 import FormRenderer from '../components/FormRenderer';
 import UploadsTab from './UploadsTab';
 import MissionTab from './MissionTab';
+import { useOnline } from '../online';
 
 export default function MainScreen({
   caseRecord,
@@ -16,13 +17,24 @@ export default function MainScreen({
 }) {
   const [activeTabId, setActiveTabId] = useState(tabs[0].id);
   const activeTab = tabs.find((t) => t.id === activeTabId)!;
+  const online = useOnline();
 
   return (
     <div className="screen main-screen">
       <header className="app-header main-header">
         <div>
           <h1>Repatriation Documentation</h1>
-          <p className="subtitle">All entries save automatically to this device</p>
+          <p className="subtitle">
+            <span
+              className={`online-badge ${online ? 'is-online' : 'is-offline'}`}
+              data-testid="online-badge"
+            >
+              {online ? 'Online' : 'Offline'}
+            </span>
+            {online
+              ? ' All entries save automatically to this device'
+              : ' No connection — entries keep saving to this device'}
+          </p>
         </div>
         <div className="header-actions">
           <button className="btn btn-secondary" onClick={onLock}>

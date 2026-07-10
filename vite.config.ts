@@ -3,8 +3,9 @@ import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 
 export default defineConfig({
-  // Served from GitHub Pages at https://<owner>.github.io/Repat-App/
-  base: '/Repat-App/',
+  // Served from GitHub Pages at https://<owner>.github.io/Repat-App/ by
+  // default; the Docker build sets BASE_PATH=/ to serve at the container root.
+  base: process.env.BASE_PATH ?? '/Repat-App/',
   plugins: [
     react(),
     VitePWA({

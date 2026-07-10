@@ -41,12 +41,17 @@ Patient data exists in exactly three places, and nowhere else:
   file are indistinguishable.
 - **In the exported PDFs**, which then fall under existing document-handling policy.
 
-There is **no server and no central database**: the hosting service serves the app's code only
-and never receives patient data. The app makes zero third-party requests — no analytics,
-trackers or external services. The PIN is never stored; it is proven by decryption succeeding.
-The full technical detail, the residual risks (PIN entropy on stolen files, device compromise,
-plaintext PDFs after export) and the required operating disciplines are set out honestly in
-`SECURITY.md`.
+By default there is **no server and no central database**: the hosting service serves the
+app's code only and never receives patient data. The app makes zero third-party requests — no
+analytics, trackers or external services. The PIN is never stored; it is proven by decryption
+succeeding. At IT's request, an **optional case repository** can be enabled by running the app
+as a Docker container on Healix's own infrastructure: escorts then submit completed cases
+(structured data plus the PDFs) to a central store for reporting and filing. Enabling it is a
+conscious change of posture — a patient database then exists, on Healix-controlled
+infrastructure, under IT's access/retention controls — and is documented in `SECURITY.md`
+("Optional component") and `docs/self-hosting.md`. The full technical detail, the residual
+risks (PIN entropy on stolen files, device compromise, plaintext PDFs after export) and the
+required operating disciplines are set out honestly in `SECURITY.md`.
 
 ## Why a bespoke build rather than the Microsoft 365 platform
 
@@ -66,7 +71,9 @@ bespoke route won on the points that matter most for this specific workflow:
    schedules and a larger breach surface. This design stores **nothing centrally**: for each
    case the data exists transiently, encrypted, on one device, and the PDFs become the record
    in existing case-management systems. From a risk standpoint the question changes from "who
-   can reach the patient database?" to "there is no patient database".
+   can reach the patient database?" to "there is no patient database by default" — and where
+   central storage is wanted for reporting, the optional repository puts it on Healix's own
+   infrastructure rather than a SaaS tenant, as a deliberate, documented choice.
 3. **Exact fit to clinical practice.** The forms replicate the paper originals precisely —
    N/A boxes that blank their fields, section-level N/A, a mandatory LMWH declaration that
    blocks export, dual UK/UTC timestamps on every observation, and two differently-scoped

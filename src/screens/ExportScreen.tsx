@@ -11,6 +11,7 @@ import { blobToB64, encryptCase, type CodeFile } from '../caseCode';
 import { tabs } from '../schema/preRepatAssessment';
 import type { Answers } from '../schema/types';
 import { lmwhComplete } from '../components/fields';
+import { flushOutbox, outboxCount, repoAvailable, submitOrQueue } from '../repo';
 
 function fileName(prefix: string, caseRecord: CaseRecord): string {
   const surname = caseRecord.patientName.trim().split(/\s+/).pop() ?? 'Patient';
@@ -60,6 +61,64 @@ export default function ExportScreen({
   useEffect(() => {
     void checkMandatory();
   }, []);
+
+  // Optional IT-hosted case repository: probe for it, flush any queued
+  // submissions (now and whenever connectivity returns).
+  const [repoOk, setRepoOk] = useState(false);
+  const [queued, setQueued] = useState(0);
+  const [repoMsg, setRepoMsg] = useState('');
+
+  const refreshRepo = async () => {
+    const flushed = await flushOutbox();
+    setQueued(await outboxCount());
+    if (flushed > 0) {
+      setRepoMsg(`${flushed} queued submission${flushed > 1 ? 's' : ''} sent to the desk repository.`);
+    }
+  };
+  useEffect(() => {
+    void repoAvailable().then(setRepoOk);
+    void refreshRepo();
+    const onOnline = () => void refreshRepo();
+    window.addEventListener('online', onOnline);
+    return () => window.removeEventListener('online', onOnline);
+  }, []);
+
+  const submitToRepository = async () => {
+    setBusy(true);
+    setRepoMsg('');
+    const record = await getAnswers('repat-record');
+    if (!lmwhComplete(record.lmwhGiven)) {
+      setLmwhOk(false);
+      setRepoMsg('The LMWH section on the Repat record tab is mandatory — complete it before submitting.');
+      setBusy(false);
+      return;
+    }
+    try {
+      const [fullPdf, handoverPdf] = [await generate('full'), await generate('handover')];
+      const toB64 = async (f: File) => (await blobToDataUrl(f)).split(',')[1];
+      const result = await submitOrQueue({
+        caseRef: caseRecord.healixRef,
+        patientName: caseRecord.patientName,
+        escortName: caseRecord.escortName,
+        submittedAt: new Date().toISOString(),
+        data: { caseRecord, answers: await exportAllAnswers() },
+        fullPdfB64: await toB64(fullPdf),
+        handoverPdfB64: await toB64(handoverPdf),
+      });
+      setQueued(await outboxCount());
+      setExported(true);
+      setRepoMsg(
+        result === 'sent'
+          ? 'Submitted to the desk repository (record, handover letter and structured data).'
+          : 'No connection — submission queued on this device and will send automatically when online.',
+      );
+    } catch (err) {
+      setRepoMsg('Submission failed. Please try again.');
+      console.error(err);
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const generate = async (kind: 'full' | 'handover'): Promise<File> => {
     // Lazy-load the PDF renderer: it is by far the largest dependency and is
@@ -240,6 +299,32 @@ export default function ExportScreen({
           {message && <p className="export-message">{message}</p>}
         </section>
 
+        {(repoOk || queued > 0) && (
+          <section className="form-section">
+            <h2 className="section-title">Submit to desk repository</h2>
+            <p className="field-note">
+              Sends the full record, handover letter and structured case data to the
+              repatriation desk's central repository. If there is no connection, the submission
+              is queued on this device and sent automatically when you are back online.
+            </p>
+            <button
+              className="btn btn-primary"
+              onClick={() => void submitToRepository()}
+              disabled={busy}
+              data-testid="submit-repo"
+            >
+              {busy ? 'Working…' : 'Submit completed case to desk repository'}
+            </button>
+            {queued > 0 && (
+              <p className="field-hint">
+                {queued} submission{queued > 1 ? 's' : ''} queued on this device awaiting a
+                connection.
+              </p>
+            )}
+            {repoMsg && <p className="export-message">{repoMsg}</p>}
+          </section>
+        )}
+
         <section className="form-section">
           <h2 className="section-title">Transfer case to a second escort device</h2>
           <p className="field-note">
@@ -292,6 +377,9 @@ export default function ExportScreen({
           ) : (
             <div className="confirm-clear">
               <p className="error">
+                {queued > 0
+                  ? `${queued} queued submission${queued > 1 ? 's have' : ' has'} NOT been sent to the desk repository yet — clearing now deletes ${queued > 1 ? 'them' : 'it'} too. `
+                  : ''}
                 {exported
                   ? 'This will permanently delete all case data from this device. Continue?'
                   : 'No PDF has been exported in this session. Clearing now will permanently delete all case data. Continue anyway?'}

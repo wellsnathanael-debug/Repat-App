@@ -79,11 +79,31 @@ written to storage. Practical effects:
 5. Device passcode enabled on any phone/tablet used (enables OS-level storage encryption
    underneath the app's own encryption).
 
+## Optional component: the self-hosted case repository
+
+Everything above describes the default deployment (no server). At IT's request the app can
+also run as a **Docker container on Healix infrastructure** which additionally hosts a
+**case repository**: at the end of a mission the escort can submit the completed case
+(structured data plus both PDFs) to it, queued automatically while offline. When this is
+enabled, the organisation **does** hold a central store of patient data — that is the point
+(reporting, and a permanent home for the PDFs) — and the risk position changes accordingly:
+
+- The store lives on infrastructure Healix controls (a single SQLite database in the
+  container's data volume), not with any third party.
+- Read access (the desk view and all downloads) requires a token IT sets (`DESK_TOKEN`).
+  In v1 the *submission* endpoint relies on network placement (internal network/VPN + TLS)
+  rather than a token — see `docs/self-hosting.md`; a per-case submission token is planned.
+- Access management, backup, and **retention** of the repository become IT-operated controls.
+- Nothing changes on the device side: same encryption at rest, same PIN model, same wipe.
+  The public (GitHub Pages) deployment has no repository and the feature is invisible there.
+
 ## Answers to likely review questions
 
 - **Is patient data processed or stored by any third party?** No. No server, no analytics, no
   third-party requests. The only third party is the static file host, which serves code, not
-  data. Email attachments transit your existing email provider, encrypted.
+  data. Email attachments transit your existing email provider, encrypted. (If the optional
+  self-hosted repository is enabled, submitted cases are stored on Healix's own
+  infrastructure — still no third party.)
 - **What happens if a device is lost?** The finder sees a PIN screen and a case reference. The
   data at rest is AES-256 encrypted; PIN attempts are throttled on-device, and the underlying
   storage is unreadable without the key. Combined with a device passcode, exposure is minimal.

@@ -1,0 +1,8 @@
+node_modules
+dist
+dev-dist
+.git
+*.md
+docs
+.github
+e2e-check.mjs

@@ -1,0 +1,15 @@
+services:
+  repat-app:
+    build: .
+    ports:
+      - '8080:8080'
+    environment:
+      # Change this. Protects the desk view and all downloads (HTTP Basic
+      # auth, username 'desk'). See docs/self-hosting.md.
+      DESK_TOKEN: change-me-please
+    volumes:
+      - repat-data:/data
+    restart: unless-stopped
+
+volumes:
+  repat-data:

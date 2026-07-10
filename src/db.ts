@@ -105,6 +105,8 @@ const db = new Dexie('repat-app') as Dexie & {
 db.version(1).stores({ cases: 'id', answers: 'key' });
 db.version(2).stores({ cases: 'id', answers: 'key', files: '++id' });
 db.version(3).stores({ cases: 'id', answers: 'key', files: '++id', meta: 'id' });
+// v4: outbox of queued (encrypted) repository submissions — see src/repo.ts.
+db.version(4).stores({ cases: 'id', answers: 'key', files: '++id', meta: 'id', outbox: '++id' });
 
 async function legacyHashPin(pin: string): Promise<string> {
   const data = new TextEncoder().encode(`repat-app:${pin}`);
@@ -383,11 +385,12 @@ export async function deleteFile(id: number): Promise<void> {
 
 export async function clearCase(): Promise<void> {
   lockSession();
-  await db.transaction('rw', db.cases, db.answers, db.files, db.meta, async () => {
+  await db.transaction('rw', db.cases, db.answers, db.files, db.meta, db.table('outbox'), async () => {
     await db.cases.clear();
     await db.answers.clear();
     await db.files.clear();
     await db.meta.clear();
+    await db.table('outbox').clear();
   });
 }
 

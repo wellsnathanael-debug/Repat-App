@@ -64,6 +64,12 @@ ref DEMO-2026-0001, watermarked sample report, PIN **123456**):
 
 Demo actions are only available when no case is loaded, so they can never touch live case data.
 
+## Self-hosting / case repository
+
+The app also runs as a Docker container on your own infrastructure, which additionally hosts
+an optional **case repository** (central database of submitted cases + generated PDFs, with a
+desk view and offline-queued submission from the app). See `docs/self-hosting.md`.
+
 ## Development
 
 ```bash
