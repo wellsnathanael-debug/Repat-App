@@ -116,3 +116,6 @@ mandatory and gates both exports (`lmwhComplete`).
   screenshotting SVG/HTML with headless Chromium (see git history for the throwaway scripts).
 - `server/email-relay.worker.js` + `docs/email-relay.md` are a **reference design only** (not
   deployed) for sending PDFs from a company mailbox, pending an IT decision.
+- `docs/cms-integration.md` is likewise a **reference design only** — how a future Healix CMS
+  would create cases (producing `.repat` files) and receive completed ones (the repository
+  server acting as an adapter). CMS-agnostic, written for vendor selection.
